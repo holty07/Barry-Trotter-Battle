@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "outDir": "./dist/tsc-app",
+    "tsBuildInfoFile": "./dist/tsc-app/tsconfig.app.tsbuildinfo",
+    "rootDir": "./src",
+    "types": ["vite/client"]
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/engine" },
+    { "path": "../../packages/protocol" }
+  ]
+}

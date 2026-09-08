@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023"],
+    "outDir": "./dist/tsc",
+    "tsBuildInfoFile": "./dist/tsc/tsconfig.tsbuildinfo",
+    "types": ["vitest/globals"]
+  },
+  "include": ["src", "test", "*.ts", "worker-configuration.d.ts"],
+  "references": [
+    { "path": "../../packages/engine" },
+    { "path": "../../packages/protocol" }
+  ]
+}

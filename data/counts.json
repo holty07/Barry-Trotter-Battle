@@ -1,0 +1,26 @@
+{
+  "_source": "Community physical inventory of a retail base-game copy (BoardGameGeek). Use as the completeness assertion for content:check.",
+  "_note": "Year 0 = the four starting decks. The four 'proficiency' entries in year 0 are the turn-order cards, which share the same board slot; model them separately from real Proficiencies.",
+  "total": 252,
+  "years": {
+    "0": { "spell": 28, "item": 8, "ally": 4, "turnOrder": 4, "_total": 44 },
+    "1": { "location": 2, "darkArts": 10, "villain": 3, "spell": 17, "item": 10, "ally": 3, "hero": 4, "_total": 49 },
+    "2": { "location": 3, "darkArts": 5, "villain": 3, "spell": 4, "item": 4, "ally": 6, "_total": 25 },
+    "3": { "location": 3, "darkArts": 4, "villain": 2, "spell": 4, "item": 9, "ally": 3, "hero": 4, "_total": 29 },
+    "4": { "location": 3, "darkArts": 8, "villain": 2, "spell": 5, "item": 8, "ally": 8, "_total": 34 },
+    "5": { "location": 3, "darkArts": 7, "villain": 3, "spell": 2, "item": 2, "ally": 6, "_total": 23 },
+    "6": { "location": 3, "darkArts": 3, "villain": 3, "spell": 2, "item": 7, "ally": 1, "proficiency": 9, "_total": 28 },
+    "7": { "location": 4, "darkArts": 4, "villain": 1, "spell": 0, "item": 1, "ally": 0, "hero": 4, "horcrux": 6, "_total": 20 }
+  },
+  "typeTotals": {
+    "location": 21, "darkArts": 41, "villain": 17, "spell": 62,
+    "item": 49, "ally": 31, "hero": 12, "proficiency": 13, "horcrux": 6
+  },
+  "components": {
+    "3": "Two tokens tied to the Petrificus Totalus spells",
+    "4": "Four house dice",
+    "7": "Four Horcrux tokens",
+    "_manuals": "Every box from Game 2 onward includes its own mini-manual; those are authoritative for that year's rule changes."
+  },
+  "knownPrintingIssue": "Some early copies shipped two Confundus cards in Year 5 instead of Stupefy."
+}

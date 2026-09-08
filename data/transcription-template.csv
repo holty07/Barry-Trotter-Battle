@@ -1,0 +1,4 @@
+id,name,type,introducedIn,copies,cost,health,text,notes
+spell.example-a,Test Spell A,spell,1,1,2,,"Verbatim card text goes here","effects pass not yet done"
+item.example-b,Test Item B,item,1,2,3,,"Verbatim card text goes here",
+villain.example-c,Test Villain C,villain,1,1,,6,"Verbatim card text goes here","ability + reward need separate modelling"
