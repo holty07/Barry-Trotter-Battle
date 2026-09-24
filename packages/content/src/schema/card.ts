@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { cardIdSchema, cardTypeSchema, effectSchema, modifierSchema, yearIdSchema } from "./common.ts";
+import { cardIdSchema, cardTypeSchema, effectSchema, villainAbilitySchema, yearIdSchema } from "./common.ts";
 
 export { cardTypeSchema };
 export type { CardType } from "./common.ts";
@@ -28,7 +28,7 @@ export const villainCardSchema = z.object({
   ...cardBaseFields,
   type: z.literal("villain"),
   health: z.number().int().positive(),
-  ability: z.array(modifierSchema).optional(),
+  ability: z.array(villainAbilitySchema).optional(),
   reward: z.array(effectSchema),
 });
 export type VillainCard = z.infer<typeof villainCardSchema>;

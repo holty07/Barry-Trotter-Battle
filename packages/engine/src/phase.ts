@@ -1,4 +1,7 @@
 import type { CardCatalog } from "./catalog.ts";
+import { emit } from "./emit.ts";
+import { drawCards } from "./resolve.ts";
+import { HAND_SIZE } from "./setup.ts";
 import { shuffle } from "./rng.ts";
 import type { CardId, Frame, GameState, Phase } from "./types.ts";
 
@@ -43,13 +46,32 @@ function revealDarkArts(state: GameState, catalog: CardCatalog): GameState {
   };
 }
 
+// docs/03's transcribed Turn Order card, step 4: "Discard any remaining
+// cards and tokens and draw five new cards." Tokens aren't modelled yet
+// (no Year 1 card uses them) — hand only, for now.
+function discardAndDraw(state: GameState): GameState {
+  const seat = state.turn.activeSeat;
+  const player = state.players[seat]!;
+  const discarded: GameState = {
+    ...state,
+    players: { ...state.players, [seat]: { ...player, hand: [], discard: [...player.discard, ...player.hand] } },
+  };
+  return drawCards(discarded, seat, HAND_SIZE);
+}
+
 export function advancePhase(state: GameState, catalog: CardCatalog): GameState {
   const currentIndex = PHASE_ORDER.indexOf(state.phase);
   const nextPhase = PHASE_ORDER[currentIndex + 1];
 
   if (nextPhase) {
     const advanced = { ...state, phase: nextPhase };
-    return nextPhase === "darkArts" ? revealDarkArts(advanced, catalog) : advanced;
+    if (nextPhase === "darkArts") return revealDarkArts(advanced, catalog);
+    // docs/03's Turn Order card, step 2: "Resolve villain abilities." Real
+    // content: Quirinus Quirrell's "active hero loses 1 health" fires here,
+    // every turn, via a modifier registered on `on: "villainAbilities"`.
+    if (nextPhase === "villainAbilities") return emit(advanced, { type: "villainAbilities" }, catalog);
+    if (nextPhase === "discardAndDraw") return discardAndDraw(advanced);
+    return advanced;
   }
 
   // turnEnd -> next seat's turnStart: docs/02 "Resource reset" invariant —

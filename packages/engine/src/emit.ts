@@ -1,3 +1,4 @@
+import type { CardCatalog } from "./catalog.ts";
 import { evaluatePredicate } from "./resolve.ts";
 import type { EffectContext, Frame, GameEvent, GameState, Modifier } from "./types.ts";
 
@@ -20,7 +21,7 @@ function bucketFor(state: GameState, modifier: Modifier): number {
  * (if any) holds, and pushes their effects onto the resolution stack in
  * trigger order. Does not drain — the caller drains after emitting.
  */
-export function emit(state: GameState, event: GameEvent): GameState {
+export function emit(state: GameState, event: GameEvent, catalog: CardCatalog = {}): GameState {
   const matching = state.modifiers.filter((modifier) => modifier.on === event.type);
 
   const contextFor = (modifier: Modifier): EffectContext => ({
@@ -29,7 +30,9 @@ export function emit(state: GameState, event: GameEvent): GameState {
     vars: { event },
   });
 
-  const triggered = matching.filter((modifier) => !modifier.condition || evaluatePredicate(state, modifier.condition, contextFor(modifier)));
+  const triggered = matching.filter(
+    (modifier) => !modifier.condition || evaluatePredicate(state, modifier.condition, contextFor(modifier), catalog),
+  );
 
   // Array.prototype.sort is stable (ES2019+), so modifiers within the same
   // bucket keep their `state.modifiers` insertion order — a deterministic,

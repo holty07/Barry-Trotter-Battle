@@ -118,4 +118,29 @@ describe("advancePhase", () => {
     expect(state.darkArts.discard).toContain("darkarts.leftover");
     expect(state.darkArts.revealedThisTurn).not.toContain("darkarts.leftover");
   });
+
+  it("emits villainAbilities on entering that phase, triggering a registered modifier", () => {
+    const catalog: CardCatalog = {
+      "villain.a": {
+        health: 99,
+        ability: [{ on: "villainAbilities", effect: { op: "gainAttack", amount: 1 }, duration: "permanent" }],
+      },
+    };
+    let state = baseState(catalog);
+    state = advancePhase(state, catalog); // turnStart -> darkArts
+    state = advancePhase(state, catalog); // darkArts -> villainAbilities
+    expect(state.resolution).toHaveLength(1);
+    expect(state.resolution[0]!.effect).toEqual({ op: "gainAttack", amount: 1 });
+  });
+
+  it("discardAndDraw discards the active player's hand and draws a fresh 5", () => {
+    let state = baseState();
+    const seat = state.turn.activeSeat;
+    const oldHand = state.players[seat]!.hand;
+    for (let i = 0; i < 4; i++) state = advancePhase(state, emptyCatalog); // turnStart -> ... -> discardAndDraw
+    expect(state.phase).toBe("discardAndDraw");
+    expect(state.players[seat]!.hand).toHaveLength(5);
+    expect(state.players[seat]!.discard).toEqual(expect.arrayContaining(oldHand));
+    expect(state.players[seat]!.hand).not.toEqual(oldHand);
+  });
 });

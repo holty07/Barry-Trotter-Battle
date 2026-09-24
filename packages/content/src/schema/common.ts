@@ -66,6 +66,7 @@ export const targetSpecSchema: z.ZodType<TargetSpec> = z.lazy(() =>
     z.object({ who: z.literal("activePlayer") }),
     z.object({ who: z.literal("allHeroes") }),
     z.object({ who: z.literal("target") }),
+    z.object({ who: z.literal("eventSeat") }),
     z.object({
       who: z.literal("choose"),
       from: z.enum(["anyHero", "otherHeroes", "activeVillains"]),
@@ -94,11 +95,13 @@ export const cardSelectorSchema: z.ZodType<CardSelector> = z.object({
   zone: zoneRefSchema.optional(),
   types: z.array(cardTypeSchema).optional(),
   matchAll: z.boolean().optional(),
+  fromEvent: z.boolean().optional(),
 });
 
-export const countableRefSchema: z.ZodType<CountableRef> = z.object({
-  matching: cardSelectorSchema,
-});
+export const countableRefSchema: z.ZodType<CountableRef> = z.union([
+  z.object({ matching: cardSelectorSchema }),
+  z.object({ counter: z.string().min(1) }),
+]);
 
 export const amountSchema: z.ZodType<Amount> = z.union([
   z.number(),
@@ -112,6 +115,8 @@ export const predicateSchema: z.ZodType<Predicate> = z.lazy(() =>
     z.object({ kind: z.literal("and"), of: z.array(predicateSchema) }),
     z.object({ kind: z.literal("or"), of: z.array(predicateSchema) }),
     z.object({ kind: z.literal("countAtLeast"), ref: countableRefSchema, amount: z.number() }),
+    z.object({ kind: z.literal("cardTypeIs"), ref: z.enum(["eventCard", "eventSource"]), cardType: z.string().min(1) }),
+    z.object({ kind: z.literal("eventCardIsSource") }),
   ]),
 );
 
@@ -120,7 +125,7 @@ export const dieIdSchema: z.ZodType<DieId> = z.string().min(1);
 export const effectSchema: z.ZodType<Effect> = z.lazy(() =>
   z.discriminatedUnion("op", [
     z.object({ op: z.literal("gainAttack"), amount: amountSchema, target: targetSpecSchema.optional() }),
-    z.object({ op: z.literal("gainInfluence"), amount: amountSchema }),
+    z.object({ op: z.literal("gainInfluence"), amount: amountSchema, target: targetSpecSchema.optional() }),
     z.object({ op: z.literal("heal"), amount: amountSchema, target: targetSpecSchema }),
     z.object({ op: z.literal("damage"), amount: amountSchema, target: targetSpecSchema }),
     z.object({ op: z.literal("draw"), count: amountSchema, target: targetSpecSchema.optional() }),
@@ -148,7 +153,8 @@ export const effectSchema: z.ZodType<Effect> = z.lazy(() =>
     z.object({ op: z.literal("forEach"), over: z.union([targetSpecSchema, cardSelectorSchema]), effect: effectSchema }),
     z.object({ op: z.literal("ifThen"), cond: predicateSchema, then: effectSchema, else: effectSchema.optional() }),
     z.object({ op: z.literal("repeat"), times: amountSchema, effect: effectSchema }),
-    z.object({ op: z.literal("addModifier"), modifier: modifierWithoutIdSchema() }),
+    z.object({ op: z.literal("addModifier"), modifier: addModifierEffectSchema }),
+    z.object({ op: z.literal("adjustCounter"), key: z.string().min(1), amount: amountSchema }),
     z.object({ op: z.literal("noop") }),
   ]),
 );
@@ -161,19 +167,35 @@ export const modifierSourceSchema = z.object({
   id: cardIdSchema,
 });
 
-function modifierWithoutIdSchema() {
-  return z.object({
-    source: modifierSourceSchema,
+// Fields every modifier needs regardless of where `id`/`source` come from.
+function modifierCoreFields() {
+  return {
     on: z.string().min(1),
     condition: predicateSchema.optional(),
     effect: effectSchema,
     duration: z.enum(["thisTurn", "thisRound", "whileSourceActive", "permanent"]),
     limitPerTurn: z.number().int().positive().optional(),
     usesThisTurn: z.number().int().nonnegative().optional(),
-  });
+  };
+}
+
+function modifierWithoutIdSchema() {
+  return z.object({ source: modifierSourceSchema, ...modifierCoreFields() });
 }
 
 export const modifierSchema: z.ZodType<Modifier> = z.object({
   id: z.string().min(1),
   ...modifierWithoutIdSchema().shape,
 });
+
+// `addModifier`'s inline modifier (docs/02): `source` is optional here,
+// unlike `modifierSchema` — a card registering its own reactive modifier
+// (Time Turner, Cleansweep 11) doesn't restate its own id; it defaults to
+// whichever card's effect is currently resolving (engine's resolve.ts).
+export const addModifierEffectSchema = z.object({ source: modifierSourceSchema.optional(), ...modifierCoreFields() });
+
+// A villain's `ability` array (docs/03): source and id are both assigned
+// when the ability is registered as a real modifier on entering a slot
+// (packages/engine's setup.ts `villainAbilityModifiers`), so content never
+// authors either.
+export const villainAbilitySchema = z.object(modifierCoreFields());

@@ -171,7 +171,15 @@ function sampleEffectFor(op: (typeof EFFECT_OPS)[number]): unknown {
           duration: "permanent",
         },
       };
+    case "adjustCounter":
+      return { op, key: "test", amount: 1 };
     case "noop":
       return { op };
+    default: {
+      // Exhaustiveness guard: a new op added to EFFECT_OPS without a case
+      // here is a compile error, not a silently-skipped test.
+      const _exhaustive: never = op;
+      return _exhaustive;
+    }
   }
 }

@@ -159,6 +159,38 @@ describe("reduce: playCard / acquireCard / assignAttack", () => {
     expect(result.state.players["seat-1"]!.attack).toBe(2);
   });
 
+  it("playCard removes only one copy of a duplicated card id from hand", () => {
+    let state = mainPhaseState();
+    // seat-1's starting deck is 10x "spell.a-0" — all 5 opening-hand cards
+    // share the same id.
+    state = {
+      ...state,
+      players: { ...state.players, "seat-1": { ...state.players["seat-1"]!, hand: ["spell.a-0", "spell.a-0", "spell.a-0"] } },
+    };
+    const result = reduce(state, { type: "playCard", cardId: "spell.a-0" }, ctx);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players["seat-1"]!.hand).toEqual(["spell.a-0", "spell.a-0"]);
+    expect(result.state.players["seat-1"]!.inPlay).toEqual(["spell.a-0"]);
+  });
+
+  it("playCard increments a played:<type> counter from the catalog (Bertie Botts pattern)", () => {
+    const state = mainPhaseState();
+    const cardId = state.players["seat-1"]!.hand[0]!;
+    const catalog = { [cardId]: { type: "ally" } };
+    const result = reduce(state, { type: "playCard", cardId }, { ...ctx, catalog });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.counters["played:ally"]).toBe(1);
+  });
+
+  it("playCard doesn't touch played:<type> counters for a card with no catalog type", () => {
+    const state = mainPhaseState();
+    const cardId = state.players["seat-1"]!.hand[0]!;
+    const result = reduce(state, { type: "playCard", cardId }, ctx);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(Object.keys(result.state.counters)).toEqual([]);
+  });
+
   it("playCard emits cardPlayed, triggering a registered modifier", () => {
     let state = mainPhaseState();
     const cardId = state.players["seat-1"]!.hand[0]!;

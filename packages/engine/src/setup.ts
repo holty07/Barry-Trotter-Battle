@@ -2,11 +2,11 @@ import type { CardCatalog } from "./catalog.ts";
 import { shuffle } from "./rng.ts";
 import type { CardId, GameState, HeroId, Modifier, Rng, SeatId, VillainInPlay } from "./types.ts";
 
-// Opening hand size of 5 comes from the transcribed Turn Order card
-// ("...draw five new cards" — content/cards/proficiencies.json, Y0), not a
-// guess: the same number is used for the opening hand and every end-of-turn
-// draw.
-const OPENING_HAND_SIZE = 5;
+// Hand size of 5 comes from the transcribed Turn Order card ("...draw five
+// new cards" — content/cards/proficiencies.json, Y0), not a guess: the
+// same number is used for the opening hand and every end-of-turn draw
+// (phase.ts's discardAndDraw).
+export const HAND_SIZE = 5;
 
 export type SetupInput = {
   seed: number;
@@ -55,8 +55,8 @@ export function setup(input: SetupInput, catalog: CardCatalog): GameState {
     players[seat] = {
       heroId: hero.heroId,
       heroLevel: hero.heroLevel,
-      deck: deck.slice(OPENING_HAND_SIZE),
-      hand: deck.slice(0, OPENING_HAND_SIZE),
+      deck: deck.slice(HAND_SIZE),
+      hand: deck.slice(0, HAND_SIZE),
       discard: [],
       inPlay: [],
       health: input.startingHealth,

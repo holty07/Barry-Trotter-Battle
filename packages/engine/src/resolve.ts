@@ -1,10 +1,12 @@
 import type { CardCatalog } from "./catalog.ts";
+import { emit } from "./emit.ts";
 import { nextInt, shuffle } from "./rng.ts";
 import { villainAbilityModifiers } from "./setup.ts";
 import { candidatesFor, resolveSeats } from "./target.ts";
 import type {
   Amount,
   BoundTarget,
+  CountableRef,
   EffectContext,
   Frame,
   GameState,
@@ -22,37 +24,55 @@ function nextPendingId(state: GameState): [string, GameState] {
   return [`pending-${seq}`, { ...state, counters: { ...state.counters, __pendingSeq: seq } }];
 }
 
-// ponytail: a count expression only counts cards in its selector's `zone`;
-// `types`/`matchAll` filters are ignored until a real card needs them (none
-// of the effect vocabulary's docs/02 example needs more than this).
-function resolveAmount(state: GameState, amount: Amount, ctx: EffectContext): number {
-  if (typeof amount === "number") return amount;
-  const { zone } = amount.of.matching;
-  if (!zone) throw new Error('resolveAmount: a count expression needs its selector to have a "zone" for now');
+// ponytail: a zone-matching count expression only counts cards in the
+// selector's `zone`; `types`/`matchAll` filters are ignored until a real
+// card needs them beyond what Bertie Botts' named counter already covers.
+function countableRefValue(state: GameState, ref: CountableRef, ctx: EffectContext): number {
+  if ("counter" in ref) return state.counters[ref.counter] ?? 0;
+  const { zone } = ref.matching;
+  if (!zone) throw new Error('countableRefValue: a zone-matching selector needs a "zone" for now');
   return getZoneCards(state, zone, ctx).length;
 }
 
-export function evaluatePredicate(state: GameState, pred: Predicate, ctx: EffectContext): boolean {
+function resolveAmount(state: GameState, amount: Amount, ctx: EffectContext): number {
+  if (typeof amount === "number") return amount;
+  return countableRefValue(state, amount.of, ctx);
+}
+
+function eventCardId(ctx: EffectContext): string | undefined {
+  return (ctx.vars["event"] as { cardId?: string } | undefined)?.cardId;
+}
+
+function eventSourceCardId(ctx: EffectContext): string | undefined {
+  return (ctx.vars["event"] as { sourceCardId?: string } | undefined)?.sourceCardId;
+}
+
+export function evaluatePredicate(state: GameState, pred: Predicate, ctx: EffectContext, catalog: CardCatalog): boolean {
   switch (pred.kind) {
     case "always":
       return true;
     case "not":
-      return !evaluatePredicate(state, pred.of, ctx);
+      return !evaluatePredicate(state, pred.of, ctx, catalog);
     case "and":
-      return pred.of.every((p) => evaluatePredicate(state, p, ctx));
+      return pred.of.every((p) => evaluatePredicate(state, p, ctx, catalog));
     case "or":
-      return pred.of.some((p) => evaluatePredicate(state, p, ctx));
-    case "countAtLeast": {
-      const { zone } = pred.ref.matching;
-      if (!zone) throw new Error('evaluatePredicate: countAtLeast needs its selector to have a "zone" for now');
-      return getZoneCards(state, zone, ctx).length >= pred.amount;
+      return pred.of.some((p) => evaluatePredicate(state, p, ctx, catalog));
+    case "countAtLeast":
+      return countableRefValue(state, pred.ref, ctx) >= pred.amount;
+    case "cardTypeIs": {
+      const cardId = pred.ref === "eventSource" ? eventSourceCardId(ctx) : eventCardId(ctx);
+      return cardId !== undefined && catalog[cardId]?.type === pred.cardType;
     }
+    case "eventCardIsSource":
+      return eventCardId(ctx) === ctx.source;
   }
 }
 
 // Shared by `addControl` and the on-stun control gain below: adds to the
 // active location's control tokens, advancing to the next location (and
 // losing the game if there isn't one) once its controlSlots is reached.
+// Emits "controlAdded" — real content (Draco Malfoy) reacts to control
+// being added regardless of what caused it.
 function applyControlGain(state: GameState, catalog: CardCatalog, amount: number): GameState {
   let controlTokens = state.locations.controlTokens + amount;
   let current = state.locations.current;
@@ -63,7 +83,8 @@ function applyControlGain(state: GameState, catalog: CardCatalog, amount: number
     controlTokens = 0;
     if (current >= state.locations.order.length) status = "lost";
   }
-  return { ...state, status, locations: { ...state.locations, current, controlTokens } };
+  const next = { ...state, status, locations: { ...state.locations, current, controlTokens } };
+  return emit(next, { type: "controlAdded", amount }, catalog);
 }
 
 // What happens when a hero's health hits 0 (confirmed by the project
@@ -97,7 +118,7 @@ function applyStun(state: GameState, catalog: CardCatalog, seat: SeatId): GameSt
   return applyControlGain(stunned, catalog, 1);
 }
 
-function drawCards(state: GameState, seat: SeatId, count: number): GameState {
+export function drawCards(state: GameState, seat: SeatId, count: number): GameState {
   const player = state.players[seat];
   if (!player) throw new Error(`drawCards: unknown seat "${seat}"`);
   let deck = [...player.deck];
@@ -142,12 +163,14 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
     }
 
     case "gainInfluence": {
+      const seats = effect.target ? resolveSeats(state, effect.target, ctx) : [ctx.controller];
       const amount = resolveAmount(state, effect.amount, ctx);
-      const seat = ctx.controller;
-      const player = state.players[seat]!;
-      return {
-        state: { ...state, players: { ...state.players, [seat]: { ...player, influence: player.influence + amount } } },
-      };
+      let next = state;
+      for (const seat of seats) {
+        const player = next.players[seat]!;
+        next = { ...next, players: { ...next.players, [seat]: { ...player, influence: player.influence + amount } } };
+      }
+      return { state: next };
     }
 
     case "heal": {
@@ -180,6 +203,12 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
     }
 
     case "draw": {
+      // Petrification-style "cannot draw extra cards this turn": a card
+      // effect's own draw is blocked while the counter is set. The phase
+      // machine's end-of-turn discardAndDraw calls `drawCards` directly,
+      // bypassing this op entirely, so the normal 5-card refresh is
+      // unaffected either way.
+      if ((state.counters["drawsBlocked"] ?? 0) > 0) return { state };
       const seats = effect.target ? resolveSeats(state, effect.target, ctx) : [ctx.controller];
       const count = resolveAmount(state, effect.count, ctx);
       let next = state;
@@ -202,19 +231,38 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
           ...next,
           players: { ...next.players, [seat]: { ...player, hand, discard: [...player.discard, ...toDiscard] } },
         };
+        // One event per card (Crabbe & Goyle: "a hero" — singular — loses
+        // health "each time" a card is discarded, so N discards trigger N times).
+        for (const cardId of toDiscard) {
+          next = emit(next, { type: "cardDiscarded", cardId, seat, sourceCardId: ctx.source }, catalog);
+        }
       }
       return { state: next };
     }
 
     case "moveCard": {
-      if (!effect.select.matchAll) {
-        throw new Error("moveCard: only { matchAll: true } is supported for now");
+      if (effect.select.matchAll) {
+        const fromCards = getZoneCards(state, effect.from, ctx);
+        const toCards = getZoneCards(state, effect.to, ctx);
+        let next = setZoneCards(state, effect.from, ctx, []);
+        next = setZoneCards(next, effect.to, ctx, [...toCards, ...fromCards]);
+        return { state: next };
       }
-      const fromCards = getZoneCards(state, effect.from, ctx);
-      const toCards = getZoneCards(state, effect.to, ctx);
-      let next = setZoneCards(state, effect.from, ctx, []);
-      next = setZoneCards(next, effect.to, ctx, [...toCards, ...fromCards]);
-      return { state: next };
+      if (effect.select.fromEvent) {
+        const cardId = eventCardId(ctx);
+        if (!cardId) throw new Error("moveCard: select.fromEvent requires the triggering event to carry a cardId");
+        const fromCards = getZoneCards(state, effect.from, ctx);
+        const index = fromCards.indexOf(cardId);
+        if (index === -1) return { state }; // already moved elsewhere by the time this resolves — no-op
+        const remainingFrom = [...fromCards.slice(0, index), ...fromCards.slice(index + 1)];
+        const toCards = getZoneCards(state, effect.to, ctx);
+        let next = setZoneCards(state, effect.from, ctx, remainingFrom);
+        // Prepended, not appended: "on top" of a deck is index 0 (drawCards
+        // reads from the front).
+        next = setZoneCards(next, effect.to, ctx, [cardId, ...toCards]);
+        return { state: next };
+      }
+      throw new Error("moveCard: only { matchAll: true } or { fromEvent: true } is supported for now");
     }
 
     case "revealTop": {
@@ -328,9 +376,13 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
       const status = slots.every((s) => s === null) && deck.length === 0 ? "won" : state.status;
       const counters = { ...state.counters, villainsDefeated: (state.counters["villainsDefeated"] ?? 0) + 1 };
       const rewardEffects = catalog[slot.cardId]?.reward ?? [];
+      const withDefeat = { ...state, status, counters, modifiers, villains: { ...state.villains, slots, defeated, deck } };
 
+      // Emitting "villainDefeated" lets OTHER cards react (e.g. an item's
+      // "if you defeat a villain, also gain X") — separate from this
+      // villain's own printed `reward`, which always fires.
       return {
-        state: { ...state, status, counters, modifiers, villains: { ...state.villains, slots, defeated, deck } },
+        state: emit(withDefeat, { type: "villainDefeated", cardId: slot.cardId }, catalog),
         newFrames: rewardEffects.map((rewardEffect) => ({ effect: rewardEffect, ctx })),
       };
     }
@@ -339,7 +391,7 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
       return { state, newFrames: effect.effects.map((e) => ({ effect: e, ctx })) };
 
     case "ifThen": {
-      const chosen = evaluatePredicate(state, effect.cond, ctx) ? effect.then : effect.else;
+      const chosen = evaluatePredicate(state, effect.cond, ctx, catalog) ? effect.then : effect.else;
       return { state, newFrames: chosen ? [{ effect: chosen, ctx }] : [] };
     }
 
@@ -361,11 +413,29 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
     }
 
     case "addModifier": {
+      // A card can't know at authoring time which seat controls it, or need
+      // to restate its own id as `source` — both default to whatever's
+      // currently resolving unless the effect data says otherwise (a card's
+      // own reaction is "owned" by whoever played it and "sourced" from
+      // itself, e.g. Cleansweep 11's "if you defeat a villain, gain 1
+      // influence this turn", or Time Turner's "you may put spells you
+      // acquire on top of your deck").
       const seq = (state.counters["__modifierSeq"] ?? 0) + 1;
-      const modifier: Modifier = { ...effect.modifier, id: `modifier-${seq}` };
+      const modifier: Modifier = {
+        source: { kind: "card", id: ctx.source },
+        controller: ctx.controller,
+        ...effect.modifier,
+        id: `modifier-${seq}`,
+      };
       return {
         state: { ...state, modifiers: [...state.modifiers, modifier], counters: { ...state.counters, __modifierSeq: seq } },
       };
+    }
+
+    case "adjustCounter": {
+      const amount = resolveAmount(state, effect.amount, ctx);
+      const current = state.counters[effect.key] ?? 0;
+      return { state: { ...state, counters: { ...state.counters, [effect.key]: current + amount } } };
     }
 
     case "chooseOne": {

@@ -25,6 +25,13 @@ export function resolveSeats(state: GameState, spec: TargetSpec, ctx: EffectCont
       }
       return [bound.seat];
     }
+    case "eventSeat": {
+      const event = ctx.vars["event"] as { seat?: SeatId } | undefined;
+      if (!event?.seat) {
+        throw new Error('resolveSeats: {who:"eventSeat"} used but the triggering event has no "seat"');
+      }
+      return [event.seat];
+    }
     case "choose":
       throw new Error(
         'resolveSeats: inline {who:"choose"} is not supported outside chooseTarget — wrap the effect in chooseTarget first',

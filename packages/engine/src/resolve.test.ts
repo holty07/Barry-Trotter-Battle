@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CardCatalog } from "./catalog.ts";
 import { drain, MAX_DRAIN_ITERATIONS } from "./drain.ts";
+import { evaluatePredicate } from "./resolve.ts";
 import { setup } from "./setup.ts";
 import type { Effect, EffectContext, GameState } from "./types.ts";
 
@@ -54,6 +55,12 @@ describe("resolve: resources and cards", () => {
   it("gainInfluence applies to the controller", () => {
     const state = run(baseState(), { op: "gainInfluence", amount: 3 });
     expect(state.players["seat-1"]!.influence).toBe(3);
+  });
+
+  it("gainInfluence with an explicit target applies to every resolved seat", () => {
+    const state = run(baseState(), { op: "gainInfluence", amount: 1, target: { who: "allHeroes" } });
+    expect(state.players["seat-1"]!.influence).toBe(1);
+    expect(state.players["seat-2"]!.influence).toBe(1);
   });
 
   it("heal caps at maxHealth", () => {
@@ -213,6 +220,24 @@ describe("resolve: board effects", () => {
     expect(state.locations.controlTokens).toBe(0);
   });
 
+  it("addControl emits controlAdded, triggering a registered modifier (Draco Malfoy pattern)", () => {
+    let state = baseState();
+    state = {
+      ...state,
+      modifiers: [
+        {
+          id: "draco",
+          source: { kind: "villain", id: "villain.a" },
+          on: "controlAdded",
+          effect: { op: "damage", amount: 2, target: { who: "activePlayer" } },
+          duration: "whileSourceActive",
+        },
+      ],
+    };
+    const result = run(state, { op: "addControl", amount: 1 });
+    expect(result.players["seat-1"]!.health).toBe(8);
+  });
+
   it("addControl advances to the next location once controlSlots is reached", () => {
     const withTwoLocations: CardCatalog = { ...catalog, "location.a": { controlSlots: 2 } };
     const state = drain(
@@ -368,6 +393,27 @@ describe("resolve: board effects", () => {
     expect(state.players["seat-1"]!.influence).toBe(3);
   });
 
+  it("assignDamageToVillain emits villainDefeated, triggering a reaction owned by whoever played it (Cleansweep 11 pattern)", () => {
+    // seat-2 played the reactive item, seat-1 is the active player who
+    // actually defeats the villain — the bonus must land on seat-2.
+    let state = baseState();
+    state = run(
+      state,
+      {
+        op: "addModifier",
+        modifier: { source: { kind: "card", id: "item.cleansweep-11" }, on: "villainDefeated", effect: { op: "gainInfluence", amount: 1 }, duration: "thisTurn" },
+      },
+      { source: "item.cleansweep-11", controller: "seat-2", vars: {} },
+    );
+    state = run(state, {
+      op: "chooseTarget",
+      spec: { who: "choose", from: "activeVillains", chooser: { who: "controller" } },
+      then: { op: "assignDamageToVillain", villain: { who: "target" }, amount: 5 },
+    });
+    expect(state.players["seat-2"]!.influence).toBe(1);
+    expect(state.players["seat-1"]!.influence).toBe(0);
+  });
+
   it("assignDamageToVillain throws with no bound target", () => {
     expect(() => run(baseState(), { op: "assignDamageToVillain", villain: { who: "target" }, amount: 1 })).toThrow(
       /no villain bound/,
@@ -481,10 +527,159 @@ describe("resolve: control flow", () => {
     expect(state.modifiers[0]!.id).toBeTruthy();
   });
 
+  it("addModifier defaults source to the resolving card, like it already does for controller (Time Turner pattern)", () => {
+    const state = run(baseState(), { op: "addModifier", modifier: { on: "cardAcquired", effect: { op: "noop" }, duration: "thisTurn" } }, ctxFor(baseState()));
+    expect(state.modifiers[0]!.source).toEqual({ kind: "card", id: "test.card" });
+    expect(state.modifiers[0]!.controller).toBe("seat-1");
+  });
+
   it("noop does nothing", () => {
     const before = baseState();
     const state = run(before, { op: "noop" });
     expect(state.players).toEqual(before.players);
+  });
+});
+
+describe("resolve: vocabulary extensions (M2c real-content pass)", () => {
+  it("adjustCounter reads back via a {counter} CountableRef (Bertie Botts pattern)", () => {
+    let state = baseState();
+    state = { ...state, counters: { "played:ally": 3 } };
+    state = run(state, { op: "gainAttack", amount: { expr: "count", of: { counter: "played:ally" } } });
+    expect(state.players["seat-1"]!.attack).toBe(3);
+  });
+
+  it("adjustCounter sets/increments a named counter", () => {
+    let state = run(baseState(), { op: "adjustCounter", key: "drawsBlocked", amount: 1 });
+    expect(state.counters["drawsBlocked"]).toBe(1);
+    state = run(state, { op: "adjustCounter", key: "drawsBlocked", amount: 1 });
+    expect(state.counters["drawsBlocked"]).toBe(2);
+  });
+
+  it("draw is blocked while drawsBlocked is set (Petrification pattern)", () => {
+    let state = baseState();
+    state = { ...state, counters: { drawsBlocked: 1 } };
+    const before = state.players["seat-1"]!.hand.length;
+    state = run(state, { op: "draw", count: 3 });
+    expect(state.players["seat-1"]!.hand).toHaveLength(before);
+  });
+
+  it("moveCard with fromEvent moves exactly the card named on the triggering event, on top of the deck", () => {
+    let state = baseState();
+    state = {
+      ...state,
+      players: { ...state.players, "seat-1": { ...state.players["seat-1"]!, discard: ["other.card", "item.time-turner"] } },
+    };
+    const result = drain(
+      {
+        ...state,
+        resolution: [
+          {
+            effect: {
+              op: "moveCard",
+              from: { owner: { who: "controller" }, zone: "discard" },
+              to: { owner: { who: "controller" }, zone: "deck" },
+              select: { fromEvent: true },
+            },
+            ctx: { source: "item.time-turner", controller: "seat-1", vars: { event: { cardId: "item.time-turner" } } },
+          },
+        ],
+      },
+      catalog,
+    );
+    expect(result.players["seat-1"]!.discard).toEqual(["other.card"]);
+    expect(result.players["seat-1"]!.deck[0]).toBe("item.time-turner");
+  });
+
+  it("moveCard with fromEvent is a no-op if the named card isn't in the from-zone", () => {
+    const before = baseState();
+    const result = drain(
+      {
+        ...before,
+        resolution: [
+          {
+            effect: {
+              op: "moveCard",
+              from: { owner: { who: "controller" }, zone: "discard" },
+              to: { owner: { who: "controller" }, zone: "deck" },
+              select: { fromEvent: true },
+            },
+            ctx: { source: "item.time-turner", controller: "seat-1", vars: { event: { cardId: "item.time-turner" } } },
+          },
+        ],
+      },
+      catalog,
+    );
+    expect(result).toEqual(before);
+  });
+
+  it("discard emits cardDiscarded per card, triggering a source-type-conditioned reaction targeting the event's seat (Crabbe & Goyle pattern)", () => {
+    const withCrabbeGoyle: CardCatalog = { ...catalog, "darkarts.flipendo": { type: "darkArts" } };
+    let state = baseState();
+    state = {
+      ...state,
+      modifiers: [
+        {
+          id: "crabbe-goyle",
+          source: { kind: "villain", id: "villain.crabbe-goyle" },
+          on: "cardDiscarded",
+          condition: { kind: "or", of: [{ kind: "cardTypeIs", ref: "eventSource", cardType: "darkArts" }, { kind: "cardTypeIs", ref: "eventSource", cardType: "villain" }] },
+          effect: { op: "damage", amount: 1, target: { who: "eventSeat" } },
+          duration: "whileSourceActive",
+        },
+      ],
+    };
+    const result = drain(
+      {
+        ...state,
+        resolution: [
+          {
+            effect: { op: "discard", count: 1, target: { who: "activePlayer" }, chooser: "target" },
+            ctx: { source: "darkarts.flipendo", controller: "seat-1", vars: {} },
+          },
+        ],
+      },
+      withCrabbeGoyle,
+    );
+    expect(result.players["seat-1"]!.health).toBe(9); // 10 - 1 from Crabbe & Goyle's reaction
+  });
+
+  it("discard's cardDiscarded reaction does not fire for a player's own voluntary discard (not sourced from darkArts/villain)", () => {
+    const withCrabbeGoyle: CardCatalog = { ...catalog, "spell.reparo": { type: "spell" } };
+    let state = baseState();
+    state = {
+      ...state,
+      modifiers: [
+        {
+          id: "crabbe-goyle",
+          source: { kind: "villain", id: "villain.crabbe-goyle" },
+          on: "cardDiscarded",
+          condition: { kind: "or", of: [{ kind: "cardTypeIs", ref: "eventSource", cardType: "darkArts" }, { kind: "cardTypeIs", ref: "eventSource", cardType: "villain" }] },
+          effect: { op: "damage", amount: 1, target: { who: "eventSeat" } },
+          duration: "whileSourceActive",
+        },
+      ],
+    };
+    const result = drain(
+      {
+        ...state,
+        resolution: [
+          {
+            effect: { op: "discard", count: 1, target: { who: "controller" }, chooser: "controller" },
+            ctx: { source: "spell.reparo", controller: "seat-1", vars: {} },
+          },
+        ],
+      },
+      withCrabbeGoyle,
+    );
+    expect(result.players["seat-1"]!.health).toBe(10);
+  });
+
+  it("eventCardIsSource predicate matches only when the event's card is the reacting card itself", () => {
+    const state = baseState();
+    const ctxSelf = { source: "item.remembrall", controller: "seat-1", vars: { event: { cardId: "item.remembrall" } } };
+    const ctxOther = { source: "item.remembrall", controller: "seat-1", vars: { event: { cardId: "spell.other" } } };
+    expect(evaluatePredicate(state, { kind: "eventCardIsSource" }, ctxSelf, catalog)).toBe(true);
+    expect(evaluatePredicate(state, { kind: "eventCardIsSource" }, ctxOther, catalog)).toBe(false);
   });
 });
 

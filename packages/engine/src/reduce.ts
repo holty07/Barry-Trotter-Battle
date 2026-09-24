@@ -14,6 +14,15 @@ import type { Action, Frame, GameState, ReduceResult, SeatId } from "./types.ts"
 //    see catalog.ts for why this can't just live in engine.
 export type ReduceContext = { actingSeat: SeatId; catalog: CardCatalog };
 
+// Removes one occurrence of `item`, not every occurrence — a zone can hold
+// several copies of the same card id (e.g. 7x Alohomora), and playing or
+// acquiring one must not remove all of them.
+function removeOne<T>(items: T[], item: T): T[] {
+  const index = items.indexOf(item);
+  if (index === -1) return items;
+  return [...items.slice(0, index), ...items.slice(index + 1)];
+}
+
 export function reduce(state: GameState, action: Action, context: ReduceContext): ReduceResult {
   if (state.pending !== null && action.type !== "respondToInput") {
     return { ok: false, reason: "an input is pending; only respondToInput is accepted" };
@@ -29,13 +38,23 @@ export function reduce(state: GameState, action: Action, context: ReduceContext)
       const player = state.players[context.actingSeat]!;
       if (!player.hand.includes(action.cardId)) return { ok: false, reason: "card is not in hand" };
 
+      // Tracked generically (not just for allies) so "for each X played this
+      // turn" works for any card type once a card needs it — Bertie Botts
+      // reads this back via {op:"gainAttack", amount:{expr:"count",
+      // of:{counter:"played:ally"}}}.
+      const type = context.catalog[action.cardId]?.type;
+      const counters = type
+        ? { ...state.counters, [`played:${type}`]: (state.counters[`played:${type}`] ?? 0) + 1 }
+        : state.counters;
+
       const withCardMoved: GameState = {
         ...state,
+        counters,
         players: {
           ...state.players,
           [context.actingSeat]: {
             ...player,
-            hand: player.hand.filter((id) => id !== action.cardId),
+            hand: removeOne(player.hand, action.cardId),
             inPlay: [...player.inPlay, action.cardId],
           },
         },
@@ -46,7 +65,7 @@ export function reduce(state: GameState, action: Action, context: ReduceContext)
         ctx: { source: action.cardId, controller: context.actingSeat, vars: {} },
       }));
       const withOwnEffects: GameState = { ...withCardMoved, resolution: [...ownFrames, ...withCardMoved.resolution] };
-      const triggered = emit(withOwnEffects, { type: "cardPlayed", cardId: action.cardId, seat: context.actingSeat });
+      const triggered = emit(withOwnEffects, { type: "cardPlayed", cardId: action.cardId, seat: context.actingSeat }, context.catalog);
       return { ok: true, state: drain(triggered, context.catalog), events: [] };
     }
 
@@ -83,7 +102,7 @@ export function reduce(state: GameState, action: Action, context: ReduceContext)
           },
         },
       };
-      const triggered = emit(withCard, { type: "cardAcquired", cardId: action.cardId, seat: context.actingSeat });
+      const triggered = emit(withCard, { type: "cardAcquired", cardId: action.cardId, seat: context.actingSeat }, context.catalog);
       return { ok: true, state: drain(triggered, context.catalog), events: [] };
     }
 
