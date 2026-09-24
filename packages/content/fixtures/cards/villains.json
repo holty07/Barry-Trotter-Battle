@@ -1,0 +1,22 @@
+[
+  {
+    "id": "villain.test-villain-a",
+    "name": "Test Villain A",
+    "type": "villain",
+    "introducedIn": 1,
+    "copies": 1,
+    "health": 8,
+    "text": "Fixture card. At the start of each turn, stun a Hero. Reward: gain 2 influence.",
+    "effects": [],
+    "ability": [
+      {
+        "id": "test-villain-a-mod-1",
+        "source": { "kind": "villain", "id": "villain.test-villain-a" },
+        "on": "turnStarted",
+        "effect": { "op": "stun", "target": { "who": "choose", "from": "anyHero", "chooser": { "who": "activePlayer" } } },
+        "duration": "thisTurn"
+      }
+    ],
+    "reward": [{ "op": "repeat", "times": 2, "effect": { "op": "gainInfluence", "amount": 1 } }]
+  }
+]

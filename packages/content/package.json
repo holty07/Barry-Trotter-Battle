@@ -8,6 +8,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "content:check": "node src/cli/check.ts",
+    "content:import": "node src/cli/import.ts"
+  },
   "dependencies": {
     "@hb/engine": "*",
     "zod": "^4.5.4"

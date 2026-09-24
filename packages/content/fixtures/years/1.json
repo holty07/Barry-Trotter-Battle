@@ -1,0 +1,22 @@
+{
+  "year": 1,
+  "villainSlots": { "2": 1, "3": 1, "4": 2 },
+  "marketRowSize": { "2": 5, "3": 6, "4": 6 },
+  "startingHealth": 10,
+  "locations": ["location.test-location-a"],
+  "villains": ["villain.test-villain-a"],
+  "darkArts": ["darkarts.test-darkarts-a", "darkarts.test-darkarts-b"],
+  "market": [
+    "spell.test-spell-a",
+    "spell.test-spell-b",
+    "spell.test-spell-c",
+    "spell.test-spell-d",
+    "item.test-item-a",
+    "item.test-item-b",
+    "ally.test-ally-a",
+    "ally.test-ally-b"
+  ],
+  "heroLevel": 1,
+  "flags": { "usesDice": false, "usesProficiencies": false, "usesHorcruxes": false },
+  "rulesDeltas": []
+}

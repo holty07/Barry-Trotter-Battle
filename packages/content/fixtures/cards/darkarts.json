@@ -1,0 +1,34 @@
+[
+  {
+    "id": "darkarts.test-darkarts-a",
+    "name": "Test Dark Arts A",
+    "type": "darkArts",
+    "introducedIn": 1,
+    "copies": 5,
+    "text": "Fixture card. Roll the test die, then deal 1 damage to the active player.",
+    "effects": [
+      { "op": "rollDie", "die": "test-die", "then": { "op": "damage", "amount": 1, "target": { "who": "activePlayer" } } }
+    ]
+  },
+  {
+    "id": "darkarts.test-darkarts-b",
+    "name": "Test Dark Arts B",
+    "type": "darkArts",
+    "introducedIn": 1,
+    "copies": 5,
+    "text": "Fixture card. Reveal the top card of the market deck, then discard it.",
+    "effects": [
+      {
+        "op": "revealTop",
+        "zone": { "owner": "market", "zone": "deck" },
+        "count": 1,
+        "then": {
+          "op": "moveCard",
+          "from": { "owner": "market", "zone": "deck" },
+          "to": { "owner": "market", "zone": "discard" },
+          "select": { "matchAll": true }
+        }
+      }
+    ]
+  }
+]

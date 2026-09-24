@@ -52,7 +52,12 @@ type VillainCard = CardBase & {
   reward: Effect[];              // on defeat
 };
 type DarkArtsCard = CardBase & { type: "darkArts" };
-type LocationCard = CardBase & { type: "location"; controlSlots: number; effects: Effect[] };
+type LocationCard = CardBase & {
+  type: "location"; controlSlots: number;
+  darkArtsPerTurn: number;       // how many Dark Arts this location reveals each turn — a fact
+                                  // of the location, not a per-year scenario constant
+  effects: Effect[];
+};
 type HeroCard = CardBase & { type: "hero"; hero: HeroId; level: 1 | 2 | 3 };
 ```
 
@@ -66,10 +71,9 @@ express it as `effects`, then have the reviewer check that the two match.
 // content/years/1.json
 {
   "year": 1,
-  "villainSlots": 1,              // varies by year and sometimes player count
-  "marketRowSize": 6,
-  "darkArtsPerTurn": 1,
-  "startingHealth": 10,
+  "villainSlots": 1,              // always 1 in the base game
+  "marketRowSize": 6,             // always 6 in the base game
+  "startingHealth": 10,           // always 10 in the base game
   "locations": ["location.diagon-alley", "location.mirror-of-erised"],
   "villains": ["villain.quirrell", "..."],
   "darkArts": ["darkarts.flipendo", "..."],
@@ -131,6 +135,32 @@ Year 1 exercises almost every mechanic in the base game.
 
 A CSV staging file is fine for step 2 if it's faster to type — write a small importer. Don't let
 the CSV become the source of truth; JSON in `content/` is.
+
+### CSV column template
+
+`npm run content:import -- <path-to-csv> [contentDir]` (from `packages/content`) reads a CSV with
+one row per card and writes/updates `content/cards/<type>.json`. It only ever handles the
+metadata + `text` pass — it never writes `effects`, and re-running it against a CSV with updated
+metadata preserves whatever `effects` you've already hand-authored in the JSON for that card id.
+
+| Column | Required | Notes |
+|---|---|---|
+| `id` | always | `<type>.<slug>` |
+| `name` | always | as printed |
+| `type` | always | one of `spell`, `item`, `ally`, `villain`, `darkArts`, `location`, `hero`, `proficiency`, `horcrux` |
+| `introducedIn` | always | `0`-`7` (`0` = evergreen starter pool, see the Y0 note above) |
+| `copies` | always | positive integer |
+| `text` | always | as printed, verbatim |
+| `cost` | spell / item / ally | integer |
+| `health` | villain | integer |
+| `controlSlots` | location | integer |
+| `hero` | hero | hero id string |
+| `level` | hero | `1`, `2`, or `3` |
+| `notes` | optional | transcription notes, ambiguities |
+
+Quote any field containing a comma, quote, or newline (standard CSV quoting — `""` for a literal
+quote inside a quoted field). A villain row gets `reward: []` and every row gets `effects: []`
+on first import; fill both in by hand as the second pass.
 
 ## Where AI helps and where it doesn't
 

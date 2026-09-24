@@ -1,0 +1,38 @@
+[
+  {
+    "id": "item.test-item-a",
+    "name": "Test Item A",
+    "type": "item",
+    "introducedIn": 1,
+    "copies": 2,
+    "cost": 3,
+    "text": "Fixture card. Heal yourself 2.",
+    "effects": [{ "op": "heal", "amount": 2, "target": { "who": "controller" } }]
+  },
+  {
+    "id": "item.test-item-b",
+    "name": "Test Item B",
+    "type": "item",
+    "introducedIn": 1,
+    "copies": 2,
+    "cost": 3,
+    "text": "Fixture card. Choose one: deal 2 damage to a Villain, or add 1 control.",
+    "effects": [
+      {
+        "op": "chooseOne",
+        "chooser": { "who": "controller" },
+        "options": [
+          {
+            "label": "optionDamage",
+            "effect": {
+              "op": "damage",
+              "amount": 2,
+              "target": { "who": "choose", "from": "activeVillains", "chooser": { "who": "controller" } }
+            }
+          },
+          { "label": "optionControl", "effect": { "op": "addControl", "amount": 1 } }
+        ]
+      }
+    ]
+  }
+]

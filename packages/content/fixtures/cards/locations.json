@@ -1,0 +1,13 @@
+[
+  {
+    "id": "location.test-location-a",
+    "name": "Test Location A",
+    "type": "location",
+    "introducedIn": 1,
+    "copies": 1,
+    "controlSlots": 2,
+    "darkArtsPerTurn": 1,
+    "text": "Fixture card. Acquire a card costing 2 or less for free.",
+    "effects": [{ "op": "acquireFree", "filter": { "maxCost": 2 }, "maxCost": 2 }]
+  }
+]

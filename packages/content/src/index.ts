@@ -1,9 +1,8 @@
 // Card schema, loader and validator for content/ (git-ignored — see
-// docs/03-content-schema.md). Real zod schemas land in M1. This
-// placeholder proves the package builds and may depend on @hb/engine.
+// docs/03-content-schema.md).
 
-import type { ENGINE_PLACEHOLDER } from "@hb/engine";
-
-export type EngineMarker = typeof ENGINE_PLACEHOLDER;
-
-export const CONTENT_PLACEHOLDER = "hogwarts-battle-content" as const;
+export * from "./schema/common.ts";
+export * from "./schema/card.ts";
+export * from "./schema/year.ts";
+export * from "./countMatrix.ts";
+export * from "./loader.ts";

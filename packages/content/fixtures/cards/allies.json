@@ -1,0 +1,39 @@
+[
+  {
+    "id": "ally.test-ally-a",
+    "name": "Test Ally A",
+    "type": "ally",
+    "introducedIn": 1,
+    "copies": 2,
+    "cost": 4,
+    "text": "Fixture card. Each Hero gains 1 attack.",
+    "effects": [
+      {
+        "op": "forEach",
+        "over": { "who": "each", "from": "heroes" },
+        "effect": { "op": "gainAttack", "amount": 1, "target": { "who": "target" } }
+      }
+    ]
+  },
+  {
+    "id": "ally.test-ally-b",
+    "name": "Test Ally B",
+    "type": "ally",
+    "introducedIn": 1,
+    "copies": 1,
+    "cost": 5,
+    "text": "Fixture card. Assign 3 damage to a Villain.",
+    "effects": [
+      {
+        "op": "ifThen",
+        "cond": { "kind": "always" },
+        "then": {
+          "op": "chooseTarget",
+          "spec": { "who": "choose", "from": "activeVillains", "chooser": { "who": "controller" } },
+          "then": { "op": "assignDamageToVillain", "villain": { "who": "target" }, "amount": 3 }
+        },
+        "else": { "op": "noop" }
+      }
+    ]
+  }
+]

@@ -11,3 +11,4 @@ coverage/
 
 # my transcribed card data — never commit real card text or art
 /content/
+/docs/*.csv

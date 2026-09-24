@@ -1,0 +1,23 @@
+[
+  {
+    "id": "hero.test-hero-a",
+    "name": "Test Hero A",
+    "type": "hero",
+    "introducedIn": 1,
+    "copies": 1,
+    "hero": "test-hero-a",
+    "level": 1,
+    "text": "Fixture card. Whenever you play a card, gain 1 attack.",
+    "effects": [
+      {
+        "op": "addModifier",
+        "modifier": {
+          "source": { "kind": "card", "id": "hero.test-hero-a" },
+          "on": "cardPlayed",
+          "effect": { "op": "gainAttack", "amount": 1 },
+          "duration": "permanent"
+        }
+      }
+    ]
+  }
+]
