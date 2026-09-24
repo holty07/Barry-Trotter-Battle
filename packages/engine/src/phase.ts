@@ -48,13 +48,21 @@ function revealDarkArts(state: GameState, catalog: CardCatalog): GameState {
 
 // docs/03's transcribed Turn Order card, step 4: "Discard any remaining
 // cards and tokens and draw five new cards." Tokens aren't modelled yet
-// (no Year 1 card uses them) — hand only, for now.
+// (no Year 1 card uses them). "Remaining cards" is both unplayed hand cards
+// and cards already played this turn (`inPlay`) — a card played earlier in
+// the turn isn't a permanent, it's just visually "in play" until cleanup
+// (docs/02 gives `inPlay` no other role). Found by playing a real game to a
+// natural conclusion: without clearing `inPlay` here, every played card was
+// permanently removed from circulation after its first use.
 function discardAndDraw(state: GameState): GameState {
   const seat = state.turn.activeSeat;
   const player = state.players[seat]!;
   const discarded: GameState = {
     ...state,
-    players: { ...state.players, [seat]: { ...player, hand: [], discard: [...player.discard, ...player.hand] } },
+    players: {
+      ...state.players,
+      [seat]: { ...player, hand: [], inPlay: [], discard: [...player.discard, ...player.hand, ...player.inPlay] },
+    },
   };
   return drawCards(discarded, seat, HAND_SIZE);
 }

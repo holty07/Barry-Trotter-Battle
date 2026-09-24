@@ -143,4 +143,20 @@ describe("advancePhase", () => {
     expect(state.players[seat]!.discard).toEqual(expect.arrayContaining(oldHand));
     expect(state.players[seat]!.hand).not.toEqual(oldHand);
   });
+
+  it("discardAndDraw also discards cards already played this turn (inPlay), not just hand", () => {
+    let state = baseState();
+    const seat = state.turn.activeSeat;
+    const playedCard = state.players[seat]!.hand[0]!;
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [seat]: { ...state.players[seat]!, hand: state.players[seat]!.hand.slice(1), inPlay: [playedCard] },
+      },
+    };
+    for (let i = 0; i < 4; i++) state = advancePhase(state, emptyCatalog); // turnStart -> ... -> discardAndDraw
+    expect(state.players[seat]!.inPlay).toEqual([]);
+    expect(state.players[seat]!.discard).toContain(playedCard);
+  });
 });

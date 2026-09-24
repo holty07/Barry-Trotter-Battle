@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
+import type { CardCatalog } from "@hb/engine";
 import { CARD_FILES_BY_TYPE, cardSchema, type Card, type CardType } from "./schema/card.ts";
 import { cardTypeSchema, EFFECT_OPS, type CardId } from "./schema/common.ts";
 import { SCENARIO_CARD_LIST_FIELDS, yearScenarioSchema, type ScenarioYearId, type YearScenario } from "./schema/year.ts";
@@ -191,6 +192,44 @@ export async function loadContent(contentDir: string): Promise<ContentSet> {
     throw new Error(`content/ failed validation (${issues.length} issue(s)):\n${lines.join("\n")}`);
   }
   return content;
+}
+
+/**
+ * A hero's starting deck: every Y0 (evergreen starter) spell/item/ally card
+ * tagged with this hero, expanded by `copies` — see docs/03's MarketCard
+ * `hero` field. Throws loudly rather than silently handing out an empty
+ * deck if the hero id is wrong or the starter cards aren't tagged yet.
+ */
+export function startingDeckFor(content: ContentSet, heroId: string): CardId[] {
+  const deck: CardId[] = [];
+  for (const card of content.cards.values()) {
+    if (card.introducedIn !== 0) continue;
+    if (!("hero" in card) || card.hero !== heroId) continue;
+    for (let i = 0; i < card.copies; i++) deck.push(card.id);
+  }
+  if (deck.length === 0) throw new Error(`startingDeckFor: no Y0 starter cards tagged for hero "${heroId}"`);
+  return deck;
+}
+
+/** Builds the static per-card facts engine's `setup`/`reduce`/effect
+ * resolution needs (see packages/engine/src/catalog.ts) from a loaded
+ * `ContentSet`. Engine may not import content, so this conversion lives
+ * here rather than there (docs/01 "Repository boundaries"). */
+export function buildCardCatalog(content: ContentSet): CardCatalog {
+  const catalog: CardCatalog = {};
+  for (const card of content.cards.values()) {
+    catalog[card.id] = {
+      type: card.type,
+      cost: "cost" in card ? card.cost : undefined,
+      health: "health" in card ? card.health : undefined,
+      controlSlots: "controlSlots" in card ? card.controlSlots : undefined,
+      darkArtsPerTurn: "darkArtsPerTurn" in card ? card.darkArtsPerTurn : undefined,
+      ability: "ability" in card ? card.ability : undefined,
+      reward: "reward" in card ? card.reward : undefined,
+      effects: card.effects,
+    };
+  }
+  return catalog;
 }
 
 function resolvePlayerCountValue<T>(value: T | { "2": T; "3": T; "4": T }, seatCount: 2 | 3 | 4): T {

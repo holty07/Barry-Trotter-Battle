@@ -45,7 +45,12 @@ type CardBase = {
   notes?: string;                // your transcription notes, ambiguities
 };
 
-type MarketCard = CardBase & { type: "spell" | "item" | "ally"; cost: number };
+type MarketCard = CardBase & {
+  type: "spell" | "item" | "ally"; cost: number;
+  hero?: HeroId;  // set only on a Y0 starter card that belongs to one hero's
+                   // starting deck (Alohomora variants, signature items,
+                   // familiars); absent on ordinary market cards
+};
 type VillainCard = CardBase & {
   type: "villain"; health: number;
   ability?: Modifier[];          // "while active" triggers
