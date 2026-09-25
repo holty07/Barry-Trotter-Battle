@@ -17,10 +17,10 @@
     "item": 49, "ally": 31, "hero": 12, "proficiency": 13, "horcrux": 6
   },
   "components": {
-    "3": "Two tokens tied to the Petrificus Totalus spells",
+    "3": "Two tokens tied to a pair of Year 3 spells",
     "4": "Four house dice",
     "7": "Four Horcrux tokens",
     "_manuals": "Every box from Game 2 onward includes its own mini-manual; those are authoritative for that year's rule changes."
   },
-  "knownPrintingIssue": "Some early copies shipped two Confundus cards in Year 5 instead of Stupefy."
+  "knownPrintingIssue": "Some early copies shipped a duplicate of one Year 5 spell in place of another."
 }

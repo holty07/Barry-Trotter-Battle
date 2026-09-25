@@ -27,8 +27,8 @@ Drive) — it will represent many hours of work.
 
 ## Card ID convention
 
-`<type>.<slug>` — stable, lowercase, never renamed once used. Examples: `spell.incendio`,
-`villain.quirrell`, `location.forbidden-forest`. The year a card is *introduced* is metadata, not
+`<type>.<slug>` — stable, lowercase, never renamed once used. Examples: `spell.fire-bolt`,
+`villain.lurking-shade`, `location.old-library`. The year a card is *introduced* is metadata, not
 part of the id, because a card can appear in the market across several years.
 
 ## Schema
@@ -48,7 +48,7 @@ type CardBase = {
 type MarketCard = CardBase & {
   type: "spell" | "item" | "ally"; cost: number;
   hero?: HeroId;  // set only on a Y0 starter card that belongs to one hero's
-                   // starting deck (Alohomora variants, signature items,
+                   // starting deck (starter spells, signature items,
                    // familiars); absent on ordinary market cards
 };
 type VillainCard = CardBase & {
@@ -79,10 +79,10 @@ express it as `effects`, then have the reviewer check that the two match.
   "villainSlots": 1,              // always 1 in the base game
   "marketRowSize": 6,             // always 6 in the base game
   "startingHealth": 10,           // always 10 in the base game
-  "locations": ["location.diagon-alley", "location.mirror-of-erised"],
-  "villains": ["villain.quirrell", "..."],
-  "darkArts": ["darkarts.flipendo", "..."],
-  "market": ["spell.incendio", "..."],
+  "locations": ["location.old-library", "location.east-tower"],
+  "villains": ["villain.lurking-shade", "..."],
+  "darkArts": ["darkarts.creeping-dread", "..."],
+  "market": ["spell.fire-bolt", "..."],
   "heroLevel": 1,
   "flags": { "usesDice": false, "usesProficiencies": false, "usesHorcruxes": false },
   "rulesDeltas": ["TODO(rules): confirm from the Game 1 manual"]
@@ -111,18 +111,18 @@ transcribed `copies` totals against it, per year, per type.
 | Horcrux | – | – | – | – | – | – | – | 6 | 6 |
 | **Total** | **44** | **49** | **25** | **29** | **34** | **23** | **28** | **20** | **252** |
 
-Spell + Item + Ally together are the Hogwarts (market) deck — 142 cards. The four "Proficiency"
+Spell + Item + Ally together are the market deck — 142 cards. The four "Proficiency"
 cards in the Y0 column are the turn-order cards, which occupy the same board slot; model them
 separately from real Proficiencies. Note that the twelve Hero cards arrive in three waves (Years
 1, 3 and 7, four each), which is why `heroLevel` is a scenario field rather than a constant.
 
-Non-card components, by the year that introduces them: Year 3 adds two tokens tied to the
-Petrificus Totalus spells, Year 4 adds the four house dice, Year 7 adds four Horcrux tokens.
+Non-card components, by the year that introduces them: Year 3 adds two tokens tied to a pair
+of spells, Year 4 adds the four house dice, Year 7 adds four Horcrux tokens.
 Every box from Game 2 onward has its own mini-manual, and those manuals are the authoritative
 spec for that year's rule changes.
 
-Known printing quirk: some early copies shipped two Confundus cards in Year 5 in place of
-Stupefy. If your copy is one of them, transcribe what the intended contents are, not what's in
+Known printing quirk: some early copies shipped a duplicate of one Year 5 spell in place
+of another. If your copy is one of them, transcribe what the intended contents are, not what's in
 the box, and note it.
 
 ## Transcription workflow

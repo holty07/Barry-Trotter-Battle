@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "cf-typegen": "wrangler types",
-    "deploy": "npm run build -w @hb/web && wrangler deploy -c ../web/dist/hogwarts_battle/wrangler.json"
+    "deploy": "npm run build -w @hb/web && wrangler deploy -c ../web/dist/barry_trotter/wrangler.json"
   },
   "dependencies": {
     "@hb/engine": "*",

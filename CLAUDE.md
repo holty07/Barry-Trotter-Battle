@@ -1,15 +1,15 @@
-# Hogwarts Battle — digital co-op adaptation
+# Barry Trotter — digital co-op adaptation
 
 Read this file at the start of every session. Then read `docs/06-milestones.md` and work
 only on the current milestone.
 
 ## What this is
 
-A digital, browser-based adaptation of the co-operative deck-builder *Harry Potter: Hogwarts
-Battle* (base game, Games/Years 1–7). Built for private online co-op play between 2–4 people,
+A digital, browser-based adaptation of a published co-operative deck-builder (base game, Games/Years 1–7), played
+with card data transcribed from your own copy. Built for private online co-op play between 2–4 people,
 self-hostable for free.
 
-Not in scope: the Monster Box or Charms & Potions expansions. Not in scope: AI opponents,
+Not in scope: the game's expansions. Not in scope: AI opponents,
 matchmaking, accounts, chat.
 
 ## Stack (locked — do not substitute)

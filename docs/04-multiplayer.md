@@ -62,7 +62,7 @@ Rules:
   a co-op at a table and makes advising each other possible) or `hidden`. Store the choice in
   room meta; the redactor reads it. Your own hand is always visible to you.
 - `pending` → only sent to the seat that must answer, plus a flag to everyone else so their UI
-  can show "waiting for Hermione".
+  can show "waiting for Hero B".
 - `rng` → never sent. Sending the seed would let a client predict every future shuffle.
 - Spectator (`seat === null`) → same as `open` minus the ability to act.
 

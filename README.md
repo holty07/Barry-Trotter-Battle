@@ -13,7 +13,7 @@ You need:
 ## Dropping this on your machine
 
 ```bash
-mkdir -p ~/dev/hogwarts-battle && cd ~/dev/hogwarts-battle
+mkdir -p ~/dev/barry-trotter && cd ~/dev/barry-trotter
 # copy CLAUDE.md, README.md and docs/ into this directory
 git init
 claude
@@ -21,8 +21,8 @@ claude
 
 Then paste the Milestone 0 prompt from `docs/06-milestones.md`.
 
-If you'd rather reuse the existing `~/dev/agy/Hogwarts-Battle/` folder, that's fine — just make
-sure it's empty apart from these docs before M0 scaffolds into it.
+If you'd rather reuse an existing project folder, that's fine — just make sure it's empty apart
+from these docs before M0 scaffolds into it.
 
 ## Commands (once M0 is done)
 

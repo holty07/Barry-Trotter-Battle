@@ -3,7 +3,7 @@ import type { ContentIssue } from "@hb/content/browser";
 export function Home({ ready, issues, onPlayHere }: { ready: boolean; issues: ContentIssue[]; onPlayHere: () => void }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-6 px-4">
-      <h1 className="font-serif text-display font-semibold">Hogwarts Battle</h1>
+      <h1 className="font-serif text-display font-semibold">Barry Trotter</h1>
       {ready ? (
         <>
           <p className="text-bone/70">A co-operative deck-builder for two to four heroes.</p>
