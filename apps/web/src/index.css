@@ -1,1 +1,68 @@
 @import "tailwindcss";
+
+/*
+ * Token system — docs/05 "Design direction". Tailwind's default palette and
+ * type scale are wiped (`initial`) so nothing off-token can creep in: five
+ * colours, two families, five text sizes. Muted text uses opacity on these
+ * colours, never a new hue.
+ */
+@theme {
+  --color-*: initial;
+  --color-table: #10131a; /* table surface; also card-face ink */
+  --color-panel: #232a36; /* panels, sheet */
+  --color-bone: #ede8df; /* card faces, primary text on dark */
+  --color-signal: #c1392b; /* threat and control — danger, only */
+  --color-brass: #b08843; /* resources and acquisition — gain, only */
+
+  /* Card faces follow the physical card's layout (project owner's call,
+     overriding docs/05's five-colour proposal for cards only): dark frame,
+     parchment text panel, a plaque colour per card type. Our own flat
+     shapes — no publisher art, crests or textures. */
+  --color-frame: #3a2a21;
+  --color-parchment: #e6d8b8;
+  --color-spell: #8a2a22;
+  --color-item: #7a6424;
+  --color-ally: #2e4a64;
+
+  --font-*: initial;
+  --font-serif: "Newsreader", ui-serif, Georgia, serif; /* card names, headings */
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif; /* numbers, chrome */
+
+  --text-*: initial;
+  --text-caption: 0.75rem; /* card rules text, secondary chrome */
+  --text-caption--line-height: 1.3;
+  --text-body: 0.875rem; /* UI chrome, labels */
+  --text-body--line-height: 1.35;
+  --text-title: 1rem; /* card names */
+  --text-title--line-height: 1.15;
+  --text-stat: 1.375rem; /* health / attack / influence */
+  --text-stat--line-height: 1;
+  --text-display: 1.75rem; /* prompt headings, room codes */
+  --text-display--line-height: 1.1;
+
+  --radius-card: 3px;
+}
+
+:root {
+  /* 0 = nothing controlled, 1 = last location full. Set by the location
+     spine's owner; the table darkens with it (docs/05 "the bold move"). */
+  --threat: 0;
+  color-scheme: dark;
+}
+
+body {
+  @apply font-sans text-body text-bone antialiased;
+  background: color-mix(in oklab, var(--color-table), black calc(var(--threat) * 45%));
+  font-feature-settings: "tnum" 1; /* numbers change constantly — no jitter */
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition: background-color 600ms ease;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}

@@ -52,7 +52,7 @@ function sampleState(): GameState {
     pending: null,
     modifiers: [],
     counters: { cardsPlayed: 1 },
-    log: [{ turn: 1, message: "game started" }],
+    log: [{ turn: 1, kind: "turnStarted", seat: "seat-1" }],
   };
 }
 

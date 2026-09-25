@@ -105,6 +105,11 @@ turnStart → darkArts → villainAbilities → main → discardAndDraw → turn
 `main` is the only phase that accepts free-form player commands. Everything else is a scripted
 advance that may push effects and may block on `pending`.
 
+As built (M3): the action is named `advancePhase`, and after every accepted action `reduce` keeps
+advancing on its own until the game is back in `main`, waiting on `pending`, or over. So from
+`main`, `advancePhase` means "end turn"; from the initial `turnStart` it starts the game. Only the
+active seat may send it.
+
 Per-year rule deltas (extra Dark Arts cards, dice, when control tokens are added, how Villains
 are replaced) live in the year scenario file, **not** in the phase code, as flags and numbers.
 The per-year mini-manuals are the authority for these. Where you don't know a delta, leave a

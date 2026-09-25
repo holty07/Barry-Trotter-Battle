@@ -25,20 +25,53 @@ function baseState(): GameState {
 const ctx = { actingSeat: "seat-1", catalog: {} };
 
 function mainPhaseState(): GameState {
-  let state = baseState();
-  for (let i = 0; i < 3; i++) {
-    const result = reduce(state, { type: "advancePhase" }, ctx);
-    if (!result.ok) throw new Error("test setup: failed to advance to main phase");
-    state = result.state;
-  }
-  return state;
+  const result = reduce(baseState(), { type: "advancePhase" }, ctx);
+  if (!result.ok) throw new Error("test setup: failed to advance to main phase");
+  return result.state;
 }
 
 describe("reduce", () => {
-  it("advances the phase on advancePhase", () => {
+  it("advancePhase from turnStart runs the scripted phases itself and stops at main", () => {
     const result = reduce(baseState(), { type: "advancePhase" }, ctx);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state.phase).toBe("darkArts");
+    if (result.ok) {
+      expect(result.state.phase).toBe("main");
+      expect(result.state.turn.activeSeat).toBe("seat-1");
+    }
+  });
+
+  it("advancePhase from main ends the turn and stops at the next seat's main", () => {
+    const result = reduce(mainPhaseState(), { type: "advancePhase" }, ctx);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.phase).toBe("main");
+      expect(result.state.turn.activeSeat).toBe("seat-2");
+      expect(result.state.turn.number).toBe(2);
+    }
+  });
+
+  it("auto-advance stops at a pending prompt raised mid-phase and resumes after it's answered", () => {
+    const catalog = {
+      "darkarts.0": { effects: [{ op: "chooseOne" as const, chooser: { who: "activePlayer" as const }, options: [
+        { label: "a", effect: { op: "noop" as const } },
+        { label: "b", effect: { op: "noop" as const } },
+      ] }] },
+      "location.a": { darkArtsPerTurn: 1, controlSlots: 99 },
+    };
+    const state: GameState = { ...baseState(), darkArts: { deck: ["darkarts.0"], discard: [], revealedThisTurn: [] } };
+    const started = reduce(state, { type: "advancePhase" }, { actingSeat: "seat-1", catalog });
+    if (!started.ok) throw new Error(started.reason);
+    expect(started.state.phase).toBe("darkArts");
+    expect(started.state.pending).not.toBeNull();
+
+    const answered = reduce(started.state, { type: "respondToInput", id: started.state.pending!.id, choices: ["0"] }, { actingSeat: "seat-1", catalog });
+    if (!answered.ok) throw new Error(answered.reason);
+    expect(answered.state.phase).toBe("main");
+  });
+
+  it("rejects advancePhase from a seat whose turn it isn't", () => {
+    const result = reduce(baseState(), { type: "advancePhase" }, { actingSeat: "seat-2", catalog: {} });
+    expect(result).toEqual({ ok: false, reason: "not your turn" });
   });
 
   it("rejects actions not yet implemented", () => {

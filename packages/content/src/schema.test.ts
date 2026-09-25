@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cardSchema } from "./schema/card.ts";
 import { EFFECT_OPS, effectSchema } from "./schema/common.ts";
 import { yearScenarioSchema } from "./schema/year.ts";
-import { collectEffectOps } from "./loader.ts";
+import { collectEffectOps } from "./parse.ts";
 
 describe("cardSchema", () => {
   it("accepts a minimal valid market card", () => {

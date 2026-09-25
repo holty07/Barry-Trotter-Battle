@@ -1,6 +1,7 @@
 import type { CardCatalog } from "./catalog.ts";
 import { drain } from "./drain.ts";
 import { emit } from "./emit.ts";
+import { logEntriesFor } from "./log.ts";
 import { advancePhase } from "./phase.ts";
 import type { Action, Frame, GameState, ReduceResult, SeatId } from "./types.ts";
 
@@ -23,13 +24,36 @@ function removeOne<T>(items: T[], item: T): T[] {
   return [...items.slice(0, index), ...items.slice(index + 1)];
 }
 
+// docs/02 "Turn structure": `main` is the only phase that takes player
+// commands; every other phase is a scripted advance the engine runs itself
+// (confirmed with the project owner — the client never steps phases). So
+// after any action, keep advancing until the game is back in `main`, is
+// waiting on a prompt, or is over. From `main`, `advancePhase` therefore
+// means "end turn"; from the initial `turnStart` it starts the game.
+function autoAdvance(state: GameState, catalog: CardCatalog): GameState {
+  let current = state;
+  while (current.status === "playing" && current.pending === null && current.phase !== "main") {
+    current = drain(advancePhase(current, catalog), catalog);
+  }
+  return current;
+}
+
 export function reduce(state: GameState, action: Action, context: ReduceContext): ReduceResult {
+  const result = reduceOnce(state, action, context);
+  if (!result.ok) return result;
+  const advanced = autoAdvance(result.state, context.catalog);
+  const entries = logEntriesFor(state, advanced, action, context.actingSeat);
+  return { ...result, state: entries.length > 0 ? { ...advanced, log: [...advanced.log, ...entries] } : advanced };
+}
+
+function reduceOnce(state: GameState, action: Action, context: ReduceContext): ReduceResult {
   if (state.pending !== null && action.type !== "respondToInput") {
     return { ok: false, reason: "an input is pending; only respondToInput is accepted" };
   }
 
   switch (action.type) {
     case "advancePhase":
+      if (context.actingSeat !== state.turn.activeSeat) return { ok: false, reason: "not your turn" };
       return { ok: true, state: drain(advancePhase(state, context.catalog), context.catalog), events: [] };
 
     case "playCard": {

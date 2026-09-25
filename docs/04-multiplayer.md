@@ -67,6 +67,9 @@ Rules:
 - Spectator (`seat === null`) → same as `open` minus the ability to act.
 
 Write `viewFor` as a whitelist that constructs a new object, not a blacklist that deletes fields.
+(Built in M3 as `packages/engine/src/view.ts`, with an optional `{ hands: "open" | "hidden" }`
+argument; the hot-seat client already renders only views, so the Durable Object reuses it as-is.
+Card names and text are not in the view — the client joins them from content by card id.)
 A blacklist leaks the day you add a field.
 
 ## Persistence

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hb/content": "*",
     "@hb/engine": "*",
     "@hb/protocol": "*",
     "react": "^19.2.8",

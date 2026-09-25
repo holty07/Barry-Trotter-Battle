@@ -1,50 +1,55 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { buildSetupInput, type ScenarioYearId } from "@hb/content/browser";
+import { HotSeatProvider, useGame } from "./game/connection.tsx";
+import { loadBundledContent, type ContentBundle } from "./game/content.ts";
+import { End } from "./screens/End.tsx";
+import { Home } from "./screens/Home.tsx";
+import { Lobby, type LobbyChoice } from "./screens/Lobby.tsx";
+import { TableScreen } from "./screens/TableScreen.tsx";
 
-// M0 hello world: connects to the GameRoom Durable Object over a
-// hibernatable WebSocket, shows the shared counter, and can increment it.
-// Real UI lands in M3 (docs/05-ui.md) driven entirely by view.pending.
+type Screen = { name: "home" } | { name: "lobby" } | { name: "game"; choice: LobbyChoice; seed: number; key: number };
+
+// Randomness lives here, never in the engine: the client picks a seed and
+// the engine's seeded RNG does the rest (CLAUDE.md hard rule 1).
+const newSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]!;
+
+function Game({ bundle, onNextYear, onPlayAgain, onHome }: { bundle: ContentBundle; onNextYear: (() => void) | null; onPlayAgain: () => void; onHome: () => void }) {
+  const { view } = useGame();
+  return view.status === "playing" ? (
+    <TableScreen bundle={bundle} />
+  ) : (
+    <End bundle={bundle} onNextYear={onNextYear} onPlayAgain={onPlayAgain} onHome={onHome} />
+  );
+}
+
 export default function App() {
-  const [counter, setCounter] = useState<number | null>(null);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const { bundle, issues } = useMemo(loadBundledContent, []);
+  const [screen, setScreen] = useState<Screen>({ name: "home" });
 
-  const connect = () => {
-    const url = new URL("/api/room/hello", window.location.href);
-    url.protocol = url.protocol.replace("http", "ws");
-    const ws = new WebSocket(url);
-    ws.addEventListener("message", (event) => {
-      const data = JSON.parse(event.data as string) as { counter: number };
-      setCounter(data.counter);
-    });
-    setSocket(ws);
-  };
+  if (!bundle || screen.name === "home") {
+    return <Home ready={bundle !== null} issues={issues} onPlayHere={() => setScreen({ name: "lobby" })} />;
+  }
+  if (screen.name === "lobby") {
+    return <Lobby bundle={bundle} onStart={(choice) => setScreen({ name: "game", choice, seed: newSeed(), key: Date.now() })} onBack={() => setScreen({ name: "home" })} />;
+  }
 
-  const increment = () => {
-    socket?.send(JSON.stringify({ t: "increment" }));
-  };
+  const { choice } = screen;
+  const startYear = (year: ScenarioYearId) => setScreen({ name: "game", choice: { ...choice, year }, seed: newSeed(), key: Date.now() });
+  const nextYear = (choice.year + 1) as ScenarioYearId;
+  const setupInput = buildSetupInput(bundle.content, {
+    year: choice.year,
+    seed: screen.seed,
+    heroesBySeat: Object.fromEntries(choice.heroes.map((heroId, i) => [`seat-${i + 1}`, heroId])),
+  });
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-slate-100">
-      <h1 className="text-2xl font-semibold">Hogwarts Battle</h1>
-      {socket ? (
-        <>
-          <p className="text-4xl tabular-nums">{counter ?? "…"}</p>
-          <button
-            type="button"
-            onClick={increment}
-            className="rounded bg-emerald-600 px-4 py-2 font-medium hover:bg-emerald-500"
-          >
-            Increment
-          </button>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={connect}
-          className="rounded bg-slate-700 px-4 py-2 font-medium hover:bg-slate-600"
-        >
-          Connect
-        </button>
-      )}
-    </main>
+    <HotSeatProvider key={screen.key} bundle={bundle} setupInput={setupInput}>
+      <Game
+        bundle={bundle}
+        onNextYear={bundle.years.includes(nextYear) ? () => startYear(nextYear) : null}
+        onPlayAgain={() => startYear(choice.year)}
+        onHome={() => setScreen({ name: "home" })}
+      />
+    </HotSeatProvider>
   );
 }

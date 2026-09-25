@@ -14,3 +14,5 @@ export * from "./phase.ts";
 export * from "./reduce.ts";
 export * from "./testing/cardConservation.ts";
 export * from "./testing/hashState.ts";
+export * from "./view.ts";
+export * from "./log.ts";

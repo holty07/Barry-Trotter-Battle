@@ -195,7 +195,22 @@ export type PendingResume =
   | { kind: "chooseOne"; ctx: EffectContext; chosenEffects: Effect[] }
   | { kind: "chooseTarget"; ctx: EffectContext; then: Effect; candidates: BoundTarget[] };
 
-export type LogEntry = { turn: number; message: string };
+// Structured, not display text (docs/02: engine vocabulary is machine keys;
+// the client renders the words). Written by log.ts from each action.
+export type LogKind =
+  | "turnStarted"
+  | "cardPlayed"
+  | "cardAcquired"
+  | "attackAssigned"
+  | "villainDefeated"
+  | "darkArtsRevealed"
+  | "controlAdded"
+  | "controlRemoved"
+  | "locationLost"
+  | "heroStunned"
+  | "gameWon"
+  | "gameLost";
+export type LogEntry = { turn: number; kind: LogKind; seat?: SeatId; cardId?: CardId; amount?: number };
 
 export type PlayerState = {
   heroId: HeroId;

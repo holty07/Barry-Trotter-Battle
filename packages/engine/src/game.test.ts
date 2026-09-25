@@ -41,12 +41,9 @@ const winCatalog: CardCatalog = {
 };
 
 function advanceToMain(state: GameState, ctx: ReduceContext): GameState {
-  for (let i = 0; i < 3; i++) {
-    const result = reduce(state, { type: "advancePhase" }, ctx);
-    if (!result.ok) throw new Error(`advanceToMain: ${result.reason}`);
-    state = result.state;
-  }
-  return state;
+  const result = reduce(state, { type: "advancePhase" }, ctx);
+  if (!result.ok) throw new Error(`advanceToMain: ${result.reason}`);
+  return result.state;
 }
 
 describe("a complete Year-1-shaped game", () => {
@@ -93,8 +90,6 @@ describe("a complete Year-1-shaped game", () => {
       const bySeat = (seat: SeatId): ReduceContext => ({ actingSeat: seat, catalog: winCatalog });
 
       const log: { action: Action; seat: SeatId }[] = [
-        { action: { type: "advancePhase" }, seat: "seat-1" },
-        { action: { type: "advancePhase" }, seat: "seat-1" },
         { action: { type: "advancePhase" }, seat: "seat-1" },
         { action: { type: "playCard", cardId: "spell.zap" }, seat: "seat-1" },
         { action: { type: "assignAttack", villainSlot: 0, amount: 3 }, seat: "seat-1" },

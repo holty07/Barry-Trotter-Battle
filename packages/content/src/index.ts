@@ -5,4 +5,5 @@ export * from "./schema/common.ts";
 export * from "./schema/card.ts";
 export * from "./schema/year.ts";
 export * from "./countMatrix.ts";
+export * from "./parse.ts";
 export * from "./loader.ts";
