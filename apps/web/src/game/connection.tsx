@@ -21,6 +21,11 @@ export function useGame(): GameConnection {
   return connection;
 }
 
+// Online rooms build their GameConnection from the socket (useRoomSocket).
+export function ConnectionProvider({ value, children }: { value: GameConnection; children: ReactNode }) {
+  return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;
+}
+
 // Hot-seat: every seat shares this screen, so the view is always for
 // whoever the game needs next — the seat answering a prompt, else the
 // active seat.

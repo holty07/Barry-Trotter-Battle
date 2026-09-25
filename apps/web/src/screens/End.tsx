@@ -10,7 +10,7 @@ export function End({
 }: {
   bundle: ContentBundle;
   onNextYear: (() => void) | null;
-  onPlayAgain: () => void;
+  onPlayAgain: (() => void) | null; // null online: a room plays one game
   onHome: () => void;
 }) {
   const { view, log } = useGame();
@@ -31,9 +31,11 @@ export function End({
             Play Year {view.year + 1} with the same heroes
           </button>
         )}
-        <button type="button" onClick={onPlayAgain} className={`rounded-md px-5 py-3 font-semibold ${won && onNextYear ? "border border-bone/30" : "bg-bone text-title text-table"}`}>
-          Play Year {view.year} again
-        </button>
+        {onPlayAgain && (
+          <button type="button" onClick={onPlayAgain} className={`rounded-md px-5 py-3 font-semibold ${won && onNextYear ? "border border-bone/30" : "bg-bone text-title text-table"}`}>
+            Play Year {view.year} again
+          </button>
+        )}
         <button type="button" onClick={onHome} className="rounded-md px-4 py-3 text-bone/70">
           Back to start
         </button>

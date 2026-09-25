@@ -8,6 +8,7 @@
     "deploy": "npm run build -w @hb/web && wrangler deploy -c ../web/dist/barry_trotter/wrangler.json"
   },
   "dependencies": {
+    "@hb/content": "*",
     "@hb/engine": "*",
     "@hb/protocol": "*"
   },

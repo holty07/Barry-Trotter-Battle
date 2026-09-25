@@ -4,14 +4,34 @@
     "composite": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "outDir": "./dist/tsc",
     "tsBuildInfoFile": "./dist/tsc/tsconfig.tsbuildinfo",
-    "types": ["vitest/globals"]
+    "types": [
+      "vitest/globals",
+      "vite/client",
+      "@cloudflare/vitest-plugin/types"
+    ],
+    "allowImportingTsExtensions": true,
+    "emitDeclarationOnly": true
   },
-  "include": ["src", "test", "*.ts", "worker-configuration.d.ts"],
+  "include": [
+    "src",
+    "test",
+    "*.ts",
+    "worker-configuration.d.ts"
+  ],
   "references": [
-    { "path": "../../packages/engine" },
-    { "path": "../../packages/protocol" }
+    {
+      "path": "../../packages/engine"
+    },
+    {
+      "path": "../../packages/protocol"
+    },
+    {
+      "path": "../../packages/content"
+    }
   ]
 }

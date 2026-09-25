@@ -39,6 +39,13 @@ Server → client:
 | { t: "error"; message: string }
 ```
 
+Built in M4 with three plumbing additions (see `packages/protocol`): `welcome` carries `lastSeq`
+(the highest `seq` applied for your seat, so a fresh tab resumes its counter and a client that
+dropped mid-send knows whether to resend); `{ t: "releaseSeat"; seat }` for the lobby control in
+"Identity" below; and `{ t: "pong" }`, the fixed auto-response to `ping`. Before the game starts,
+`takeSeat` claims any free seat with an unclaimed hero; afterwards it can only reclaim an in-game
+seat that has been released (the hero is kept).
+
 Send the whole redacted view on every change rather than diffs. A view is a few kilobytes of JSON;
 diffing is an optimisation you don't need and a source of desync you don't want. Revisit only if
 you actually see a problem.
@@ -82,8 +89,16 @@ that don't already have one).
 CREATE TABLE IF NOT EXISTS meta      (k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS actions   (n INTEGER PRIMARY KEY, seat TEXT, json TEXT);
 CREATE TABLE IF NOT EXISTS snapshots (n INTEGER PRIMARY KEY, json TEXT);
-CREATE TABLE IF NOT EXISTS seats     (seat TEXT PRIMARY KEY, player_id TEXT, name TEXT, last_seq INTEGER);
+CREATE TABLE IF NOT EXISTS seats     (seat TEXT PRIMARY KEY, player_id TEXT, name TEXT, hero_id TEXT, last_seq INTEGER);
 ```
+
+(`hero_id` added in M4: heroes are picked in the lobby before any game state exists.) The started
+game is stored as snapshot 0, so a rebuild never re-runs setup; the seed is drawn in the Durable
+Object with `crypto.getRandomValues`, never in the engine.
+
+Card data reaches the Durable Object the same way it reaches the client: `content/` is bundled in
+at build time (`apps/worker/src/contentFiles.ts`), so a deploy from your machine carries it and
+the repository never does. Worker tests alias that module to the synthetic fixtures.
 
 Append each accepted action; snapshot the whole state every 25 actions and delete older
 snapshots. On construction, load the latest snapshot and replay any later actions through the
@@ -97,7 +112,8 @@ it and the constructor rebuilds from storage.
 
 - `ctx.acceptWebSocket(ws)`, never `ws.accept()`.
 - Handle `webSocketMessage`, `webSocketClose`, `webSocketError` as DO methods.
-- Store the seat on the socket with `ws.serializeAttachment({ seat, playerId })` — after
+- Store identity on the socket with `ws.serializeAttachment({ playerId, name })` and look the
+  seat up in the `seats` table (built this way in M4, so a seat change can't leave a stale copy) — after
   hibernation you have no in-memory socket map, so recover state from
   `ctx.getWebSockets()` and each socket's `deserializeAttachment()`.
 - No `setTimeout` / `setInterval` anywhere in the DO — they block hibernation. Use

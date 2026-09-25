@@ -8,7 +8,7 @@ import globals from "globals";
 // Repository boundaries (docs/01-architecture.md):
 //   packages/engine   may not import anything except itself
 //   packages/content  may import engine (types) and itself
-//   packages/protocol may only import itself
+//   packages/protocol may import engine (types) and itself
 //   apps/*            may import all three packages
 //   nothing           may import apps/*
 const boundaries = [
@@ -18,7 +18,7 @@ const boundaries = [
   },
   {
     target: "./packages/protocol/**",
-    from: ["./packages/engine/**", "./packages/content/**", "./apps/**"],
+    from: ["./packages/content/**", "./apps/**"],
   },
   {
     target: "./packages/content/**",

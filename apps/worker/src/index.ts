@@ -1,52 +1,34 @@
-import { DurableObject } from "cloudflare:workers";
+import { isRoomCode, roomCode, ROOM_CODE_LENGTH } from "@hb/protocol";
 
-// M0 hello world only. The real room protocol, seat claiming, redaction
-// and reconnect handling land in M4 (docs/04-multiplayer.md).
-export class GameRoom extends DurableObject<Env> {
-  override async fetch(request: Request): Promise<Response> {
-    if (request.headers.get("Upgrade") !== "websocket") {
-      return new Response("expected a websocket upgrade", { status: 426 });
-    }
+export { GameRoom } from "./room.ts";
 
-    const { 0: client, 1: server } = new WebSocketPair();
-    this.ctx.acceptWebSocket(server);
-    server.send(JSON.stringify({ counter: await this.currentCounter() }));
-
-    return new Response(null, { status: 101, webSocket: client });
-  }
-
-  override async webSocketMessage(_ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    const text = typeof message === "string" ? message : new TextDecoder().decode(message);
-    const parsed = JSON.parse(text) as { t?: string };
-    if (parsed.t !== "increment") return;
-
-    const counter = (await this.currentCounter()) + 1;
-    await this.ctx.storage.put("counter", counter);
-
-    const payload = JSON.stringify({ counter });
-    for (const socket of this.ctx.getWebSockets()) {
-      socket.send(payload);
-    }
-  }
-
-  override async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
-    ws.close(code, reason);
-  }
-
-  private async currentCounter(): Promise<number> {
-    return (await this.ctx.storage.get<number>("counter")) ?? 0;
-  }
-}
-
+// docs/04 "Routes". Everything else falls through to the built SPA.
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
-    const match = /^\/api\/room\/([^/]+)$/.exec(url.pathname);
+    if (url.pathname === "/api/rooms" && request.method === "POST") return createRoom(request, env);
+
+    const match = /^\/api\/rooms\/([^/]+)(\/ws)?$/.exec(url.pathname);
     if (match) {
-      const roomCode = match[1] as string;
-      const id = env.GAME_ROOM.idFromName(roomCode);
-      return env.GAME_ROOM.get(id).fetch(request);
+      const code = match[1]!.toUpperCase();
+      if (!isRoomCode(code)) return new Response("no such room", { status: 404 });
+      const room = env.GAME_ROOM.getByName(code);
+      if (match[2]) return room.fetch(request);
+      const meta = await room.roomMeta();
+      return meta ? Response.json(meta) : new Response("no such room", { status: 404 });
     }
+    if (url.pathname.startsWith("/api/")) return new Response("not found", { status: 404 });
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
+
+async function createRoom(request: Request, env: Env): Promise<Response> {
+  const body = (await request.json().catch(() => null)) as { hands?: unknown } | null;
+  const hands = body?.hands === "hidden" ? "hidden" : "open";
+  // A collision is ~1 in 10^9 per room; retry a few times rather than never.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = roomCode(crypto.getRandomValues(new Uint32Array(ROOM_CODE_LENGTH)));
+    if (await env.GAME_ROOM.getByName(code).init(code, hands)) return Response.json({ code }, { status: 201 });
+  }
+  return new Response("could not allocate a room code", { status: 503 });
+}
