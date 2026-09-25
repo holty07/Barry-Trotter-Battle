@@ -85,6 +85,7 @@ export function tableModel(view: PlayerView, bundle: ContentBundle): TableModel 
 
   return {
     location: { name: face(bundle, locationId).name, number: Math.min(current + 1, order.length), of: order.length, control: controlTokens, slots },
+    turn: view.turn.number,
     threat: Math.min(1, (current + controlTokens / slots) / order.length),
     villains: view.villains.slots.flatMap((v, slot) => (v ? [{ slot, face: face(bundle, v.cardId), damage: v.damageTaken }] : [])),
     darkArts: view.darkArts.revealedThisTurn.map((id) => face(bundle, id)),

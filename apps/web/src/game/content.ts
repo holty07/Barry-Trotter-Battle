@@ -46,7 +46,8 @@ export function buildBundle(content: ContentSet): ContentBundle {
       ...("cost" in card ? { cost: card.cost } : {}),
       ...("health" in card ? { health: card.health } : {}),
       year: card.introducedIn,
-      ...("hero" in card && card.hero ? { hero: heroName(card.hero) } : {}),
+      // The printed ribbon carries just the hero's first name.
+      ...("hero" in card && card.hero ? { hero: heroName(card.hero).split(" ")[0]! } : {}),
     };
   }
 

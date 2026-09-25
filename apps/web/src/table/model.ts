@@ -37,6 +37,7 @@ export type PromptModel = {
 
 export type TableModel = {
   location: { name: string; number: number; of: number; control: number; slots: number };
+  turn: number;
   threat: number;
   villains: { slot: number; face: CardFace; damage: number }[];
   darkArts: CardFace[];

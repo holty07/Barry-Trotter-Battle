@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Card } from "./Card.tsx";
+import { Floaters, HitFlash, MotionMemory, Pile, Pop, useFirstRender } from "./motion.tsx";
 import type { CardFace, HeroSummary, PromptModel, TableModel } from "./model.ts";
 
 export type TableHandlers = {
@@ -32,11 +33,18 @@ function Inspectable({ face, inspect, children }: { face: CardFace; inspect: Ins
 }
 
 function LocationSpine({ location }: { location: TableModel["location"] }) {
+  const first = useFirstRender();
   return (
     <header className="flex items-center gap-4 border-b border-bone/10 px-4 py-2.5 sm:px-6">
-      <div className="flex gap-1" aria-hidden>
+      <div key={location.number} className="flex gap-1" aria-hidden>
         {Array.from({ length: location.slots }, (_, i) => (
-          <span key={i} className={`h-4 w-7 ${i < location.control ? "bg-signal" : "bg-panel"}`} />
+          <span key={i} className="h-4 w-7 bg-panel">
+            {i < location.control && (
+              <Pop animate={!first} block>
+                <span className="block h-4 w-7 bg-signal" />
+              </Pop>
+            )}
+          </span>
         ))}
       </div>
       <p className="min-w-0 truncate">
@@ -63,6 +71,7 @@ function PanelHeading({ children, aside }: { children: ReactNode; aside?: ReactN
 // native scroll-snap — docs/05 "the threat bands become a swipeable pair".
 function ThreatBands({ model, inspect, onAssign }: { model: TableModel; inspect: Inspect; onAssign: TableHandlers["onAssign"] }) {
   const attack = model.you.attack;
+  const first = useFirstRender();
   return (
     <section aria-label="Threats">
       <nav className="mb-2 flex gap-4 text-bone/60 lg:hidden" aria-label="Threat panes">
@@ -78,7 +87,9 @@ function ThreatBands({ model, inspect, onAssign }: { model: TableModel; inspect:
           <PanelHeading>Villains</PanelHeading>
           <div className="flex gap-3">
             {model.villains.map((v) => (
-              <div key={v.slot} className="w-34">
+              <div key={`${v.slot}-${v.face.id}`} className="relative w-34">
+                <HitFlash value={v.damage} />
+                <Floaters value={(v.face.health ?? 0) - v.damage} className="top-1/2" big />
                 <Inspectable face={v.face} inspect={inspect}>
                   <Card
                     face={v.face}
@@ -97,10 +108,12 @@ function ThreatBands({ model, inspect, onAssign }: { model: TableModel; inspect:
           <div className="flex gap-3">
             {model.darkArts.length === 0 && <p className="text-bone/60">Nothing revealed this turn.</p>}
             {model.darkArts.map((face, i) => (
-              <div key={`${face.id}-${i}`} className="w-34">
-                <Inspectable face={face} inspect={inspect}>
-                  <Card face={face} />
-                </Inspectable>
+              <div key={`${model.turn}-${i}`} className="w-34">
+                <Pop animate={!first} className="animate-reveal" block>
+                  <Inspectable face={face} inspect={inspect}>
+                    <Card face={face} />
+                  </Inspectable>
+                </Pop>
               </div>
             ))}
           </div>
@@ -137,20 +150,24 @@ function Market({ model, inspect, onAcquire }: { model: TableModel; inspect: Ins
 
 function Stats({ hero, size }: { hero: HeroSummary; size: "stat" | "body" }) {
   const num = size === "stat" ? "text-stat font-semibold" : "font-semibold";
+  const pile = size === "stat" ? "lg" : "sm";
   return (
-    <span className="inline-flex items-baseline gap-3">
-      <span aria-label={`${hero.health} of ${hero.maxHealth} health`}>
+    <span className="inline-flex items-center gap-4">
+      <span className="relative" aria-label={`${hero.health} of ${hero.maxHealth} health`}>
+        <Floaters value={hero.health} track={`health:${hero.seat}`} />
         <span className={hero.health <= 3 ? "text-signal" : ""}>♥ </span>
         <span className={num}>{hero.health}</span>
         <span className="text-bone/50">/{hero.maxHealth}</span>
       </span>
-      <span className="text-brass" aria-label={`${hero.attack} attack`}>
-        ⚡ <span className={`${num} text-bone`}>{hero.attack}</span>
-        {size === "stat" && <span className="text-bone/60"> attack</span>}
+      <span className="inline-flex items-center gap-1.5" aria-label={`${hero.attack} attack`}>
+        <Pile count={hero.attack} kind="bolt" size={pile} track={`attack:${hero.seat}`} />
+        <span className={num}>{hero.attack}</span>
+        {size === "stat" && <span className="text-bone/60">attack</span>}
       </span>
-      <span className="text-brass" aria-label={`${hero.influence} influence`}>
-        ◈ <span className={`${num} text-bone`}>{hero.influence}</span>
-        {size === "stat" && <span className="text-bone/60"> influence</span>}
+      <span className="inline-flex items-center gap-1.5" aria-label={`${hero.influence} influence`}>
+        <Pile count={hero.influence} kind="coin" size={pile} track={`influence:${hero.seat}`} />
+        <span className={num}>{hero.influence}</span>
+        {size === "stat" && <span className="text-bone/60">influence</span>}
       </span>
       {hero.stunned && <span className="font-semibold text-signal">stunned</span>}
     </span>
@@ -170,14 +187,24 @@ function OtherHeroes({ others }: { others: HeroSummary[] }) {
   );
 }
 
-function Dock({ model, rejection, inspect, handlers }: { model: TableModel; rejection: string | null; inspect: Inspect; handlers: TableHandlers }) {
+function Dock({
+  model,
+  rejection,
+  inspect,
+  handlers,
+}: {
+  model: TableModel;
+  rejection: string | null;
+  inspect: Inspect;
+  handlers: TableHandlers;
+}) {
   const { you, canAct } = model;
   const onlyVillain = model.villains.length === 1 ? model.villains[0]! : null;
   return (
     <section aria-label={`${you.heroName}'s turn`} className="border-t border-bone/10 bg-panel/60 px-4 pt-3 pb-4 sm:px-6">
       <div className="mb-2 flex flex-wrap items-center gap-x-6 gap-y-2">
         <h2 className="font-serif text-display font-semibold">{you.heroName}'s turn</h2>
-        <Stats hero={you} size="stat" />
+        <Stats key={you.seat} hero={you} size="stat" />
         <span className="text-bone/60">
           deck {you.deckCount} · discard {you.discardCount}
         </span>
@@ -299,6 +326,7 @@ export function Table({
   announcement: string;
   handlers: TableHandlers;
 }) {
+  const [motionMemory] = useState(() => new Map<string, number>());
   const [inspected, setInspected] = useState<CardFace | null>(null);
   const [touchInspect, setTouchInspect] = useState(false);
   const inspect: Inspect = (face, viaTouch = false) => {
@@ -329,24 +357,28 @@ export function Table({
   }, [touchInspect]);
 
   return (
-    <div className="flex h-dvh flex-col">
-      <LocationSpine location={model.location} />
-      <main className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-4 sm:px-6">
-        <ThreatBands model={model} inspect={inspect} onAssign={handlers.onAssign} />
-        <Market model={model} inspect={inspect} onAcquire={handlers.onAcquire} />
-        <OtherHeroes others={model.others} />
-      </main>
-      <Dock model={model} rejection={rejection} inspect={inspect} handlers={handlers} />
-      {model.prompt && <PendingSheet key={model.prompt.id} prompt={model.prompt} onAnswer={handlers.onAnswer} />}
-      {model.waitingOn && <WaitingSheet heroName={model.waitingOn} />}
-      {inspected && (
-        <div className="pointer-events-none fixed top-16 right-4 z-10 w-64 shadow-2xl shadow-black/60" aria-hidden>
-          <Card face={inspected} />
+    <MotionMemory.Provider value={motionMemory}>
+      <div className="flex h-dvh flex-col">
+        <LocationSpine location={model.location} />
+        <main className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-4 sm:px-6">
+          <ThreatBands model={model} inspect={inspect} onAssign={handlers.onAssign} />
+          <Market model={model} inspect={inspect} onAcquire={handlers.onAcquire} />
+          <OtherHeroes others={model.others} />
+        </main>
+        {/* Keyed by seat: when the turn passes, the dock is a different hero, so
+          their numbers must not animate as if they'd changed. */}
+        <Dock key={model.you.seat} model={model} rejection={rejection} inspect={inspect} handlers={handlers} />
+        {model.prompt && <PendingSheet key={model.prompt.id} prompt={model.prompt} onAnswer={handlers.onAnswer} />}
+        {model.waitingOn && <WaitingSheet heroName={model.waitingOn} />}
+        {inspected && (
+          <div className="pointer-events-none fixed top-16 right-4 z-10 w-64 shadow-2xl shadow-black/60" aria-hidden>
+            <Card face={inspected} />
+          </div>
+        )}
+        <div className="sr-only" aria-live="polite">
+          {announcement}
         </div>
-      )}
-      <div className="sr-only" aria-live="polite">
-        {announcement}
       </div>
-    </div>
+    </MotionMemory.Provider>
   );
 }

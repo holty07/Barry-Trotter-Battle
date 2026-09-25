@@ -41,6 +41,43 @@
   --text-display--line-height: 1.1;
 
   --radius-card: 3px;
+
+  /* Motion — only ever in response to a state change (docs/05), quick but
+     noticeable. Reduced-motion users get a plain fade (see below). */
+  --animate-float-up: float-up 950ms ease-out forwards;
+  --animate-drop-in: drop-in 360ms cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+  --animate-reveal: reveal 320ms ease-out both;
+  --animate-hit: hit 450ms ease-out forwards;
+
+  @keyframes float-up {
+    0% { opacity: 0; transform: translateY(6px) scale(0.8); }
+    15% { opacity: 1; transform: translateY(0) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-30px) scale(1); }
+  }
+  @keyframes drop-in {
+    0% { opacity: 0; transform: translateY(-16px) scale(1.5); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes reveal {
+    0% { opacity: 0; transform: scale(0.85); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes hit {
+    0% { opacity: 0.4; }
+    100% { opacity: 0; }
+  }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Floaters still need an animationend to clear themselves. */
+  .animate-float-up { animation-name: fade-out; }
+  .animate-drop-in,
+  .animate-reveal { animation: none; }
 }
 
 :root {
