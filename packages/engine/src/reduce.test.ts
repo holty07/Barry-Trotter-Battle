@@ -207,7 +207,7 @@ describe("reduce: playCard / acquireCard / assignAttack", () => {
     expect(result.state.players["seat-1"]!.inPlay).toEqual(["spell.a-0"]);
   });
 
-  it("playCard increments a played:<type> counter from the catalog (Bertie Botts pattern)", () => {
+  it("playCard increments a played:<type> counter from the catalog (a 'for each ally played' card)", () => {
     const state = mainPhaseState();
     const cardId = state.players["seat-1"]!.hand[0]!;
     const catalog = { [cardId]: { type: "ally" } };

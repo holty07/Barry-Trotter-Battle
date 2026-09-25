@@ -10,8 +10,8 @@ export type CardCatalog = Record<
   CardId,
   {
     // The card's type (spell/item/ally/etc.) — needed for "for each ally
-    // played" (Bertie Botts) and "caused by a Dark Arts event or Villain"
-    // (Crabbe & Goyle) checks. Engine treats it as an opaque string; it
+    // played this turn" and "caused by a Dark Arts event or Villain"
+    // checks. Engine treats it as an opaque string; it
     // doesn't know or care what the real type names are.
     type?: string;
     cost?: number;

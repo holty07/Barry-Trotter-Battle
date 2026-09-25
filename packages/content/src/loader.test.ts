@@ -115,13 +115,13 @@ describe("loadContentSet against a deliberately broken content/ dir", () => {
           copies: 1,
           cost: 1,
           text: "x",
-          effects: [{ op: "obliviate", amount: 1 }],
+          effects: [{ op: "notARealOp", amount: 1 }],
         },
       ]),
     );
 
     const { issues } = await loadContentSet(dir);
-    expect(issues.some((i) => i.message.includes('unknown effect op "obliviate"'))).toBe(true);
+    expect(issues.some((i) => i.message.includes('unknown effect op "notARealOp"'))).toBe(true);
   });
 
   it("reports a duplicate card id across files", async () => {

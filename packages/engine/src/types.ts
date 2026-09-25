@@ -21,7 +21,7 @@ export type LabelKey = string;
 // TODO(spec): `{ who: "target" }` isn't in docs/02's union. `chooseTarget`
 // binds ctx.target but nothing in the original union can reference it
 // afterwards, so this is the mechanism until confirmed otherwise.
-// `{ who: "eventSeat" }` (added for Crabbe & Goyle): the seat named on the
+// `{ who: "eventSeat" }` (added for villain reactions to a discard): the seat named on the
 // event a modifier is reacting to (`ctx.vars.event.seat`) — e.g. "that hero
 // loses 1 health" needs the hero from the discard event, not necessarily
 // the active player.
@@ -40,20 +40,20 @@ export type TargetSpec =
 export type ZoneOwner = TargetSpec | "market" | "darkArts" | "villains" | "locations" | "horcruxes";
 export type ZoneRef = { owner: ZoneOwner; zone: string };
 export type CardFilter = { types?: string[]; maxCost?: number };
-// `fromEvent` (added for Time Turner/Wingardium Leviosa/Sorting Hat): select
+// `fromEvent` (added for "put the card you acquire on top of your deck" cards): select
 // exactly the one card named on the triggering event (`ctx.vars.event.cardId`)
 // — "you may put the card you just acquired on top of your deck", not every
 // card in the zone.
 export type CardSelector = { zone?: ZoneRef; types?: string[]; matchAll?: boolean; fromEvent?: boolean };
-// `{ counter: string }` (added for Bertie Botts): a named running tally in
+// `{ counter: string }` (added for "for each ally played this turn"): a named running tally in
 // `state.counters` (docs/02 itself names "cards played" as an example use),
 // as opposed to counting cards currently sitting in a zone.
 export type CountableRef = { matching: CardSelector } | { counter: string };
 export type Amount = number | { expr: "count"; of: CountableRef };
 export type DieId = string;
 
-// `cardTypeIs`/`eventCardIsSource` added for Crabbe & Goyle ("a Dark Arts
-// event or Villain" causing the discard) and Remembrall-shaped checks
+// `cardTypeIs`/`eventCardIsSource` added for "caused by a Dark Arts event or
+// Villain" reactions and "if you discard this card" checks
 // ("this exact card"). `ref: "eventCard"` looks at `ctx.vars.event.cardId`
 // (the card the event is about, e.g. which card got discarded); `ref:
 // "eventSource"` looks at `ctx.vars.event.sourceCardId` (the card whose
@@ -72,10 +72,10 @@ export type Predicate =
 // --- Effect vocabulary — docs/02 "Effect vocabulary", plus two additions ---
 // TODO(spec): docs/02 gives `gainInfluence` no `target` field at all (unlike
 // the otherwise-identical `gainAttack`), but real content needs "all heroes
-// gain 1 influence" (Tales of Beedle the Bard, Albus Dumbledore). Added the
+// gain 1 influence". Added the
 // same optional `target` gainAttack already has, for symmetry.
-// `adjustCounter` (added for Petrification's "cannot draw extra cards this
-// turn" and Bertie Botts' "for each ally played this turn"): a generic way
+// `adjustCounter` (added for "cannot draw extra cards this turn" and "for each
+// ally played this turn"): a generic way
 // for content to read/write a named `state.counters` entry — docs/02's own
 // comment on `counters` names exactly this use ("cards played, villains
 // defeated…").
@@ -102,7 +102,7 @@ export type Effect =
   | { op: "repeat"; times: Amount; effect: Effect }
   // `source` is optional here (unlike the base Modifier type) for the same
   // reason `controller` already was: a card registering its own reactive
-  // modifier (Time Turner, Sorting Hat) doesn't need to restate its own id
+  // modifier doesn't need to restate its own id
   // — it defaults to whichever card's effect is currently resolving.
   | { op: "addModifier"; modifier: Omit<Modifier, "id" | "source"> & { source?: Modifier["source"] } }
   | { op: "adjustCounter"; key: string; amount: Amount }

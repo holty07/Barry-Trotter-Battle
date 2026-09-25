@@ -26,7 +26,7 @@ function nextPendingId(state: GameState): [string, GameState] {
 
 // ponytail: a zone-matching count expression only counts cards in the
 // selector's `zone`; `types`/`matchAll` filters are ignored until a real
-// card needs them beyond what Bertie Botts' named counter already covers.
+// card needs them beyond what the named `played:<type>` counter already covers.
 function countableRefValue(state: GameState, ref: CountableRef, ctx: EffectContext): number {
   if ("counter" in ref) return state.counters[ref.counter] ?? 0;
   const { zone } = ref.matching;
@@ -71,7 +71,7 @@ export function evaluatePredicate(state: GameState, pred: Predicate, ctx: Effect
 // Shared by `addControl` and the on-stun control gain below: adds to the
 // active location's control tokens, advancing to the next location (and
 // losing the game if there isn't one) once its controlSlots is reached.
-// Emits "controlAdded" — real content (Draco Malfoy) reacts to control
+// Emits "controlAdded" — a villain can react to control
 // being added regardless of what caused it.
 function applyControlGain(state: GameState, catalog: CardCatalog, amount: number): GameState {
   let controlTokens = state.locations.controlTokens + amount;
@@ -203,7 +203,7 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
     }
 
     case "draw": {
-      // Petrification-style "cannot draw extra cards this turn": a card
+      // "Cannot draw extra cards this turn": a card
       // effect's own draw is blocked while the counter is set. The phase
       // machine's end-of-turn discardAndDraw calls `drawCards` directly,
       // bypassing this op entirely, so the normal 5-card refresh is
@@ -231,8 +231,8 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
           ...next,
           players: { ...next.players, [seat]: { ...player, hand, discard: [...player.discard, ...toDiscard] } },
         };
-        // One event per card (Crabbe & Goyle: "a hero" — singular — loses
-        // health "each time" a card is discarded, so N discards trigger N times).
+        // One event per card (a reaction like "each time a hero discards a card,
+        // that hero loses 1 health" fires once per card, so N discards trigger N times).
         for (const cardId of toDiscard) {
           next = emit(next, { type: "cardDiscarded", cardId, seat, sourceCardId: ctx.source }, catalog);
         }
@@ -417,9 +417,9 @@ export function applyEffect(state: GameState, frame: Frame, catalog: CardCatalog
       // to restate its own id as `source` — both default to whatever's
       // currently resolving unless the effect data says otherwise (a card's
       // own reaction is "owned" by whoever played it and "sourced" from
-      // itself, e.g. Cleansweep 11's "if you defeat a villain, gain 1
-      // influence this turn", or Time Turner's "you may put spells you
-      // acquire on top of your deck").
+      // itself, e.g. "if you defeat a villain, gain 1
+      // influence this turn", or "you may put cards you acquire on top of
+      // your deck").
       const seq = (state.counters["__modifierSeq"] ?? 0) + 1;
       const modifier: Modifier = {
         source: { kind: "card", id: ctx.source },

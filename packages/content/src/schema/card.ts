@@ -21,8 +21,8 @@ export const marketCardSchema = z.object({
   ...cardBaseFields,
   type: z.enum(["spell", "item", "ally"]),
   cost: z.number().int().nonnegative(),
-  // Which hero's starting deck this card belongs to (the Alohomora variants,
-  // signature items, familiars in the Y0 evergreen pool) — absent for
+  // Which hero's starting deck this card belongs to (each hero's starter spells,
+  // signature items and familiar in the Y0 evergreen pool) — absent for
   // ordinary market cards. Value matches HeroCard.hero. Needed to resolve
   // each hero's starting deck; docs/03 names no other mechanism for it.
   hero: z.string().min(1).optional(),

@@ -16,10 +16,15 @@ const describeWithRealContent = existsSync(CONTENT_DIR) ? describe : describe.sk
 
 type LoggedAction = { seat: SeatId; action: Action };
 
-const HEROES = { "seat-1": "harry-potter", "seat-2": "ron-weasley" };
+// Two heroes picked by position from the loaded content (first and last
+// level-1 hero, by id) so no real names live in the repo.
+function heroesFor(content: ContentSet): Record<SeatId, string> {
+  const ids = [...content.cards.values()].flatMap((c) => (c.type === "hero" && c.level === 1 ? [c.hero] : [])).sort();
+  return { "seat-1": ids[0]!, "seat-2": ids[ids.length - 1]! };
+}
 
 function newGame(content: ContentSet, catalog: CardCatalog, seed: number): GameState {
-  return setup(buildSetupInput(content, { year: 1, seed, heroesBySeat: HEROES }), catalog);
+  return setup(buildSetupInput(content, { year: 1, seed, heroesBySeat: heroesFor(content) }), catalog);
 }
 
 /**

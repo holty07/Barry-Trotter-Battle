@@ -22,7 +22,7 @@ export { EFFECT_OPS };
 // Card ids: <type>.<slug> — see docs/03-content-schema.md "Card ID convention".
 export const cardIdSchema = z
   .string()
-  .regex(/^[a-z]+(-[a-z]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/, "expected <type>.<slug>, e.g. spell.incendio");
+  .regex(/^[a-z]+(-[a-z]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/, "expected <type>.<slug>, e.g. spell.test-a");
 export type CardId = z.infer<typeof cardIdSchema>;
 
 export const cardTypeSchema = z.enum([
@@ -190,7 +190,7 @@ export const modifierSchema: z.ZodType<Modifier> = z.object({
 
 // `addModifier`'s inline modifier (docs/02): `source` is optional here,
 // unlike `modifierSchema` — a card registering its own reactive modifier
-// (Time Turner, Cleansweep 11) doesn't restate its own id; it defaults to
+// doesn't restate its own id; it defaults to
 // whichever card's effect is currently resolving (engine's resolve.ts).
 export const addModifierEffectSchema = z.object({ source: modifierSourceSchema.optional(), ...modifierCoreFields() });
 

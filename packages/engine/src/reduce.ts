@@ -16,7 +16,7 @@ import type { Action, Frame, GameState, ReduceResult, SeatId } from "./types.ts"
 export type ReduceContext = { actingSeat: SeatId; catalog: CardCatalog };
 
 // Removes one occurrence of `item`, not every occurrence — a zone can hold
-// several copies of the same card id (e.g. 7x Alohomora), and playing or
+// several copies of the same card id (e.g. seven copies of a starter spell), and playing or
 // acquiring one must not remove all of them.
 function removeOne<T>(items: T[], item: T): T[] {
   const index = items.indexOf(item);
@@ -63,8 +63,8 @@ function reduceOnce(state: GameState, action: Action, context: ReduceContext): R
       if (!player.hand.includes(action.cardId)) return { ok: false, reason: "card is not in hand" };
 
       // Tracked generically (not just for allies) so "for each X played this
-      // turn" works for any card type once a card needs it — Bertie Botts
-      // reads this back via {op:"gainAttack", amount:{expr:"count",
+      // turn" works for any card type once a card needs it — a "for each
+      // ally played" card reads this back via {op:"gainAttack", amount:{expr:"count",
       // of:{counter:"played:ally"}}}.
       const type = context.catalog[action.cardId]?.type;
       const counters = type

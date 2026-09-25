@@ -220,13 +220,13 @@ describe("resolve: board effects", () => {
     expect(state.locations.controlTokens).toBe(0);
   });
 
-  it("addControl emits controlAdded, triggering a registered modifier (Draco Malfoy pattern)", () => {
+  it("addControl emits controlAdded, triggering a registered modifier (a villain that punishes control being added)", () => {
     let state = baseState();
     state = {
       ...state,
       modifiers: [
         {
-          id: "draco",
+          id: "test-control-punisher",
           source: { kind: "villain", id: "villain.a" },
           on: "controlAdded",
           effect: { op: "damage", amount: 2, target: { who: "activePlayer" } },
@@ -393,7 +393,7 @@ describe("resolve: board effects", () => {
     expect(state.players["seat-1"]!.influence).toBe(3);
   });
 
-  it("assignDamageToVillain emits villainDefeated, triggering a reaction owned by whoever played it (Cleansweep 11 pattern)", () => {
+  it("assignDamageToVillain emits villainDefeated, triggering a reaction owned by whoever played it (an 'if you defeat a villain' item)", () => {
     // seat-2 played the reactive item, seat-1 is the active player who
     // actually defeats the villain — the bonus must land on seat-2.
     let state = baseState();
@@ -401,9 +401,9 @@ describe("resolve: board effects", () => {
       state,
       {
         op: "addModifier",
-        modifier: { source: { kind: "card", id: "item.cleansweep-11" }, on: "villainDefeated", effect: { op: "gainInfluence", amount: 1 }, duration: "thisTurn" },
+        modifier: { source: { kind: "card", id: "item.test-defeat-bonus" }, on: "villainDefeated", effect: { op: "gainInfluence", amount: 1 }, duration: "thisTurn" },
       },
-      { source: "item.cleansweep-11", controller: "seat-2", vars: {} },
+      { source: "item.test-defeat-bonus", controller: "seat-2", vars: {} },
     );
     state = run(state, {
       op: "chooseTarget",
@@ -527,7 +527,7 @@ describe("resolve: control flow", () => {
     expect(state.modifiers[0]!.id).toBeTruthy();
   });
 
-  it("addModifier defaults source to the resolving card, like it already does for controller (Time Turner pattern)", () => {
+  it("addModifier defaults source to the resolving card, like it already does for controller (a card registering its own reaction)", () => {
     const state = run(baseState(), { op: "addModifier", modifier: { on: "cardAcquired", effect: { op: "noop" }, duration: "thisTurn" } }, ctxFor(baseState()));
     expect(state.modifiers[0]!.source).toEqual({ kind: "card", id: "test.card" });
     expect(state.modifiers[0]!.controller).toBe("seat-1");
@@ -541,7 +541,7 @@ describe("resolve: control flow", () => {
 });
 
 describe("resolve: vocabulary extensions (M2c real-content pass)", () => {
-  it("adjustCounter reads back via a {counter} CountableRef (Bertie Botts pattern)", () => {
+  it("adjustCounter reads back via a {counter} CountableRef (a 'for each ally played' card)", () => {
     let state = baseState();
     state = { ...state, counters: { "played:ally": 3 } };
     state = run(state, { op: "gainAttack", amount: { expr: "count", of: { counter: "played:ally" } } });
@@ -555,7 +555,7 @@ describe("resolve: vocabulary extensions (M2c real-content pass)", () => {
     expect(state.counters["drawsBlocked"]).toBe(2);
   });
 
-  it("draw is blocked while drawsBlocked is set (Petrification pattern)", () => {
+  it("draw is blocked while drawsBlocked is set (a Dark Arts event that blocks extra draws)", () => {
     let state = baseState();
     state = { ...state, counters: { drawsBlocked: 1 } };
     const before = state.players["seat-1"]!.hand.length;
@@ -612,15 +612,15 @@ describe("resolve: vocabulary extensions (M2c real-content pass)", () => {
     expect(result).toEqual(before);
   });
 
-  it("discard emits cardDiscarded per card, triggering a source-type-conditioned reaction targeting the event's seat (Crabbe & Goyle pattern)", () => {
-    const withCrabbeGoyle: CardCatalog = { ...catalog, "darkarts.flipendo": { type: "darkArts" } };
+  it("discard emits cardDiscarded per card, triggering a source-type-conditioned reaction targeting the event's seat (a villain that punishes discards)", () => {
+    const withDiscardPunisher: CardCatalog = { ...catalog, "darkarts.test-discard": { type: "darkArts" } };
     let state = baseState();
     state = {
       ...state,
       modifiers: [
         {
-          id: "crabbe-goyle",
-          source: { kind: "villain", id: "villain.crabbe-goyle" },
+          id: "test-discard-punisher",
+          source: { kind: "villain", id: "villain.test-discard-punisher" },
           on: "cardDiscarded",
           condition: { kind: "or", of: [{ kind: "cardTypeIs", ref: "eventSource", cardType: "darkArts" }, { kind: "cardTypeIs", ref: "eventSource", cardType: "villain" }] },
           effect: { op: "damage", amount: 1, target: { who: "eventSeat" } },
@@ -634,24 +634,24 @@ describe("resolve: vocabulary extensions (M2c real-content pass)", () => {
         resolution: [
           {
             effect: { op: "discard", count: 1, target: { who: "activePlayer" }, chooser: "target" },
-            ctx: { source: "darkarts.flipendo", controller: "seat-1", vars: {} },
+            ctx: { source: "darkarts.test-discard", controller: "seat-1", vars: {} },
           },
         ],
       },
-      withCrabbeGoyle,
+      withDiscardPunisher,
     );
-    expect(result.players["seat-1"]!.health).toBe(9); // 10 - 1 from Crabbe & Goyle's reaction
+    expect(result.players["seat-1"]!.health).toBe(9); // 10 - 1 from the villain's reaction
   });
 
   it("discard's cardDiscarded reaction does not fire for a player's own voluntary discard (not sourced from darkArts/villain)", () => {
-    const withCrabbeGoyle: CardCatalog = { ...catalog, "spell.reparo": { type: "spell" } };
+    const withDiscardPunisher: CardCatalog = { ...catalog, "spell.test-voluntary-discard": { type: "spell" } };
     let state = baseState();
     state = {
       ...state,
       modifiers: [
         {
-          id: "crabbe-goyle",
-          source: { kind: "villain", id: "villain.crabbe-goyle" },
+          id: "test-discard-punisher",
+          source: { kind: "villain", id: "villain.test-discard-punisher" },
           on: "cardDiscarded",
           condition: { kind: "or", of: [{ kind: "cardTypeIs", ref: "eventSource", cardType: "darkArts" }, { kind: "cardTypeIs", ref: "eventSource", cardType: "villain" }] },
           effect: { op: "damage", amount: 1, target: { who: "eventSeat" } },
@@ -665,19 +665,19 @@ describe("resolve: vocabulary extensions (M2c real-content pass)", () => {
         resolution: [
           {
             effect: { op: "discard", count: 1, target: { who: "controller" }, chooser: "controller" },
-            ctx: { source: "spell.reparo", controller: "seat-1", vars: {} },
+            ctx: { source: "spell.test-voluntary-discard", controller: "seat-1", vars: {} },
           },
         ],
       },
-      withCrabbeGoyle,
+      withDiscardPunisher,
     );
     expect(result.players["seat-1"]!.health).toBe(10);
   });
 
   it("eventCardIsSource predicate matches only when the event's card is the reacting card itself", () => {
     const state = baseState();
-    const ctxSelf = { source: "item.remembrall", controller: "seat-1", vars: { event: { cardId: "item.remembrall" } } };
-    const ctxOther = { source: "item.remembrall", controller: "seat-1", vars: { event: { cardId: "spell.other" } } };
+    const ctxSelf = { source: "item.test-discard-bonus", controller: "seat-1", vars: { event: { cardId: "item.test-discard-bonus" } } };
+    const ctxOther = { source: "item.test-discard-bonus", controller: "seat-1", vars: { event: { cardId: "spell.other" } } };
     expect(evaluatePredicate(state, { kind: "eventCardIsSource" }, ctxSelf, catalog)).toBe(true);
     expect(evaluatePredicate(state, { kind: "eventCardIsSource" }, ctxOther, catalog)).toBe(false);
   });

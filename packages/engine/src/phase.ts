@@ -74,9 +74,9 @@ export function advancePhase(state: GameState, catalog: CardCatalog): GameState 
   if (nextPhase) {
     const advanced = { ...state, phase: nextPhase };
     if (nextPhase === "darkArts") return revealDarkArts(advanced, catalog);
-    // docs/03's Turn Order card, step 2: "Resolve villain abilities." Real
-    // content: Quirinus Quirrell's "active hero loses 1 health" fires here,
-    // every turn, via a modifier registered on `on: "villainAbilities"`.
+    // docs/03's Turn Order card, step 2: "Resolve villain abilities." A villain
+    // whose ability hits the active hero fires here, every turn, via a
+    // modifier registered on `on: "villainAbilities"`.
     if (nextPhase === "villainAbilities") return emit(advanced, { type: "villainAbilities" }, catalog);
     if (nextPhase === "discardAndDraw") return discardAndDraw(advanced);
     return advanced;
