@@ -94,8 +94,9 @@ function ThreatBands({ model, inspect, onAssign }: { model: TableModel; inspect:
                   <Card
                     face={v.face}
                     damage={v.damage}
-                    onClick={model.canAct && attack > 0 ? () => onAssign(v.slot, attack) : undefined}
-                    actionLabel={`Assign ${attack} attack to`}
+                    // One attack per click, so it can be split between villains.
+                    onClick={model.canAct && attack > 0 ? () => onAssign(v.slot, 1) : undefined}
+                    actionLabel="Assign 1 attack to"
                   />
                 </Inspectable>
               </div>
@@ -174,15 +175,45 @@ function Stats({ hero, size }: { hero: HeroSummary; size: "stat" | "body" }) {
   );
 }
 
-function OtherHeroes({ others }: { others: HeroSummary[] }) {
+// Other heroes' hands stay out of the way until you open their profile.
+function OtherHeroes({ others, inspect }: { others: TableModel["others"]; inspect: Inspect }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const hero = others.find((h) => h.seat === open);
   return (
-    <section aria-label="Other heroes" className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-      {others.map((hero) => (
-        <span key={hero.seat} className="inline-flex items-baseline gap-2">
-          <span className="font-serif text-title font-semibold">{hero.heroName}</span>
-          <Stats hero={hero} size="body" />
-        </span>
-      ))}
+    <section aria-label="Other heroes" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+        {others.map((h) => (
+          <button
+            key={h.seat}
+            type="button"
+            aria-expanded={open === h.seat}
+            onClick={() => setOpen(open === h.seat ? null : h.seat)}
+            className={`inline-flex items-baseline gap-2 rounded-md px-2 py-1 text-left ${open === h.seat ? "bg-panel" : "hover:bg-panel/60"}`}
+          >
+            <span className="font-serif text-title font-semibold">{h.heroName}</span>
+            <Stats hero={h} size="body" />
+            {h.active && <span className="text-brass">their turn</span>}
+          </button>
+        ))}
+      </div>
+      {hero && (
+        <div className="rounded-md bg-panel/60 px-3 py-3">
+          <PanelHeading aside={`${hero.handCount} in hand`}>{hero.heroName}'s hand</PanelHeading>
+          {hero.hand ? (
+            <div className="grid grid-cols-5 gap-2.5 lg:grid-cols-[repeat(5,minmax(0,8.5rem))]">
+              {hero.hand.map((face, i) => (
+                <Inspectable key={`${face.id}-${i}`} face={face} inspect={inspect}>
+                  <Card face={face} showCost={false} />
+                </Inspectable>
+              ))}
+              {hero.hand.length === 0 && <p className="col-span-5 text-bone/60">No cards in hand.</p>}
+            </div>
+          ) : (
+            <p className="text-bone/60">Hands are hidden in this room.</p>
+          )}
+          {hero.played.length > 0 && <p className="mt-2 text-bone/60">Played this turn: {hero.played.map((c) => c.name).join(", ")}</p>}
+        </div>
+      )}
     </section>
   );
 }
@@ -199,11 +230,15 @@ function Dock({
   handlers: TableHandlers;
 }) {
   const { you, canAct } = model;
+  const activeOther = model.others.find((h) => h.active);
   const onlyVillain = model.villains.length === 1 ? model.villains[0]! : null;
   return (
-    <section aria-label={`${you.heroName}'s turn`} className="border-t border-bone/10 bg-panel/60 px-4 pt-3 pb-4 sm:px-6">
+    <section aria-label={model.yourTurn ? `${you.heroName}'s turn` : `${you.heroName}, waiting`} className="border-t border-bone/10 bg-panel/60 px-4 pt-3 pb-4 sm:px-6">
       <div className="mb-2 flex flex-wrap items-center gap-x-6 gap-y-2">
-        <h2 className="font-serif text-display font-semibold">{you.heroName}'s turn</h2>
+        <h2 className="font-serif text-display font-semibold">
+          {model.yourTurn ? `${you.heroName}'s turn` : you.heroName}
+          {!model.yourTurn && <span className="ml-3 font-sans text-body font-normal text-bone/60">{model.activeHero}'s turn</span>}
+        </h2>
         <Stats key={you.seat} hero={you} size="stat" />
         <span className="text-bone/60">
           deck {you.deckCount} · discard {you.discardCount}
@@ -213,10 +248,10 @@ function Dock({
             type="button"
             disabled={!canAct || you.attack === 0 || !onlyVillain}
             onClick={() => onlyVillain && handlers.onAssign(onlyVillain.slot, you.attack)}
-            title={model.villains.length > 1 ? "Click a villain to assign your attack to it" : undefined}
+            title={model.villains.length > 1 ? "Click a villain to assign attack to it one at a time" : undefined}
             className="rounded-md border border-brass px-4 py-2 font-semibold text-brass disabled:opacity-40"
           >
-            Assign {you.attack} attack
+            Assign all {you.attack} attack
           </button>
           <button
             type="button"
@@ -233,9 +268,12 @@ function Dock({
           <span className="font-semibold text-signal" role="alert">
             {rejection.charAt(0).toUpperCase() + rejection.slice(1)}.
           </span>
+        ) : !model.yourTurn ? (
+          activeOther && activeOther.played.length > 0 ? <>{activeOther.heroName} played: {activeOther.played.map((c) => c.name).join(", ")}</> : null
         ) : you.played.length > 0 ? (
           <>Played this turn: {you.played.map((c) => c.name).join(", ")}</>
         ) : you.hand.length > 0 ? (
+          model.villains.length > 1 ? "Play cards, buy from the market, click a villain once per attack, then end your turn." :
           "Play cards from your hand, buy from the market, then end your turn."
         ) : null}
       </p>
@@ -275,6 +313,7 @@ function PendingSheet({ prompt, onAnswer }: { prompt: PromptModel; onAnswer: Tab
         <h2 id="pending-title" className="font-serif text-display font-semibold">
           {prompt.heroName}: {prompt.title}
         </h2>
+        <Stats hero={prompt.hero} size="stat" />
         {prompt.source && <p className="text-bone/60">From {prompt.source.name}.</p>}
         <div className="flex flex-wrap gap-3">
           {prompt.options.map((option, i) => (
@@ -363,7 +402,7 @@ export function Table({
         <main className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-4 sm:px-6">
           <ThreatBands model={model} inspect={inspect} onAssign={handlers.onAssign} />
           <Market model={model} inspect={inspect} onAcquire={handlers.onAcquire} />
-          <OtherHeroes others={model.others} />
+          <OtherHeroes others={model.others} inspect={inspect} />
         </main>
         {/* Keyed by seat: when the turn passes, the dock is a different hero, so
           their numbers must not animate as if they'd changed. */}

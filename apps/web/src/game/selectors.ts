@@ -68,6 +68,7 @@ export function promptModel(view: PlayerView, bundle: ContentBundle): PromptMode
   return {
     id: pending.id,
     heroName: heroOf(view, bundle, pending.seat),
+    hero: summary(view, bundle, pending.seat),
     title: PROMPT_TITLES[pending.prompt.key] ?? humaniseKey(pending.prompt.key).toLowerCase(),
     source: bundle.faces[pending.source] ?? null,
     minChoices: pending.minChoices,
@@ -81,7 +82,8 @@ export function tableModel(view: PlayerView, bundle: ContentBundle): TableModel 
   const locationId = order[Math.min(current, order.length - 1)]!;
   const slots = bundle.catalog[locationId]?.controlSlots ?? 1;
   const active = view.turn.activeSeat;
-  const you = view.players[active]!;
+  const viewer = view.you ?? active; // spectators follow the active hero
+  const you = view.players[viewer]!;
 
   return {
     location: { name: face(bundle, locationId).name, number: Math.min(current + 1, order.length), of: order.length, control: controlTokens, slots },
@@ -90,14 +92,27 @@ export function tableModel(view: PlayerView, bundle: ContentBundle): TableModel 
     villains: view.villains.slots.flatMap((v, slot) => (v ? [{ slot, face: face(bundle, v.cardId), damage: v.damageTaken }] : [])),
     darkArts: view.darkArts.revealedThisTurn.map((id) => face(bundle, id)),
     market: { row: view.market.row.map((id) => (id ? face(bundle, id) : null)), deckCount: view.market.deckCount },
-    others: view.seats.filter((s) => s !== active).map((s) => summary(view, bundle, s)),
+    others: view.seats
+      .filter((s) => s !== viewer)
+      .map((s) => {
+        const p = view.players[s]!;
+        return {
+          ...summary(view, bundle, s),
+          active: s === active,
+          hand: p.hand ? p.hand.map((id) => face(bundle, id)) : null,
+          handCount: p.handCount,
+          played: p.inPlay.map((id) => face(bundle, id)),
+        };
+      }),
     you: {
-      ...summary(view, bundle, active),
+      ...summary(view, bundle, viewer),
       deckCount: you.deckCount,
       discardCount: you.discard.length,
       hand: (you.hand ?? []).map((id) => face(bundle, id)),
       played: you.inPlay.map((id) => face(bundle, id)),
     },
+    activeHero: heroOf(view, bundle, active),
+    yourTurn: viewer === active,
     canAct: view.status === "playing" && view.phase === "main" && view.waitingOn === null && view.you === active,
     prompt: promptModel(view, bundle),
     waitingOn: view.waitingOn && !view.pending ? heroOf(view, bundle, view.waitingOn) : null,

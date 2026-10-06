@@ -28,6 +28,7 @@ export type HeroSummary = {
 export type PromptModel = {
   id: string;
   heroName: string;
+  hero: HeroSummary; // the chooser's own numbers, visible while choosing
   title: string;
   source: CardFace | null;
   minChoices: number;
@@ -42,8 +43,12 @@ export type TableModel = {
   villains: { slot: number; face: CardFace; damage: number }[];
   darkArts: CardFace[];
   market: { row: (CardFace | null)[]; deckCount: number };
-  others: HeroSummary[];
+  // Everyone but the viewer. Hands are only shown when a profile is opened.
+  others: (HeroSummary & { active: boolean; hand: CardFace[] | null; handCount: number; played: CardFace[] })[];
+  // The viewer's own hero — online that's your seat, hot-seat the seat the game is waiting on.
   you: HeroSummary & { deckCount: number; discardCount: number; hand: CardFace[]; played: CardFace[] };
+  activeHero: string; // whose turn it is
+  yourTurn: boolean;
   canAct: boolean;
   prompt: PromptModel | null; // the viewer must answer
   waitingOn: string | null; // hero name the game is waiting on, when it isn't the viewer

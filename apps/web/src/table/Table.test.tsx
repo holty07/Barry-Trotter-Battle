@@ -95,3 +95,49 @@ describe("pending-input sheet (docs/05)", () => {
     expect(screen.getByRole("alert").textContent).toBe("Not enough influence.");
   });
 });
+
+describe("the viewer's own dock", () => {
+  const view: PlayerView = {
+    ...baseView,
+    you: "seat-2",
+    players: { "seat-1": { ...player("hero.a"), hand: ["ally.test-a"] }, "seat-2": player("hero.b") },
+  };
+
+  it("shows only your own hand, even when it's someone else's turn", () => {
+    render(<Table model={tableModel(view, bundle)} rejection={null} announcement="" handlers={handlers()} />);
+    expect(screen.getByRole("heading", { name: /^Hero B/ }).textContent).toContain("Hero A's turn");
+    expect(screen.getByText("Test Spell A")).toBeTruthy();
+    expect(screen.queryByText("Test Ally A")).toBeNull();
+  });
+
+  it("shows another hero's hand only when their profile is opened", () => {
+    render(<Table model={tableModel(view, bundle)} rejection={null} announcement="" handlers={handlers()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Hero A/ }));
+    expect(screen.getByText("Test Ally A")).toBeTruthy();
+  });
+});
+
+describe("assigning attack", () => {
+  it("assigns one attack per villain click, so it can be split between villains", () => {
+    const view: PlayerView = { ...baseView, players: { ...baseView.players, "seat-1": { ...player("hero.a"), attack: 3 } } };
+    const h = handlers();
+    render(<Table model={tableModel(view, bundle)} rejection={null} announcement="" handlers={h} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Assign 1 attack to/ }));
+    expect(h.onAssign).toHaveBeenCalledWith(0, 1);
+  });
+});
+
+describe("choosing with your numbers in view", () => {
+  it("shows the chooser's health, attack and influence on the prompt sheet", () => {
+    const view: PlayerView = {
+      ...baseView,
+      players: { ...baseView.players, "seat-1": { ...player("hero.a"), health: 6, influence: 4 } },
+      pending: { id: "p1", seat: "seat-1", prompt: { key: "chooseOne" }, minChoices: 1, maxChoices: 1, options: [{ id: "0", label: "draw" }], source: "ally.test-a" },
+      waitingOn: "seat-1",
+    };
+    render(<Table model={tableModel(view, bundle)} rejection={null} announcement="" handlers={handlers()} />);
+    const sheet = screen.getByRole("dialog");
+    expect(sheet.querySelector('[aria-label="6 of 10 health"]')).toBeTruthy();
+    expect(sheet.querySelector('[aria-label="4 influence"]')).toBeTruthy();
+  });
+});
